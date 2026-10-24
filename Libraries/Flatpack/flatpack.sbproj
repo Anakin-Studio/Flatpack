@@ -1,0 +1,7 @@
+{
+  "Title": "Flatpack",
+  "Type": "library",
+  "Org": "local",
+  "Ident": "flatpack",
+  "Schema": 1
+}
