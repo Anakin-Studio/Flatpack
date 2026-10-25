@@ -5,6 +5,29 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Quality levels and early depth test (iteration 4)
+
+- Change:
+  - Quality levels in the bake settings: Low (12 x 12 views, 1024 atlas, 8 search steps), Medium (12 x 12, 2048, 16;
+    the default), High (24 x 24, 4096, 16), Ultra (24 x 24, 4096, 32), or Custom. Grid Size, Atlas Size and the new
+    Search Steps setting show only for Custom. The baker writes the search steps into the material. Grid Size goes to
+    32 in Custom (was 16).
+  - Optimize Scene has a Quality picker, shared with the bake window's saved settings.
+  - Impostor shader: conservative depth output (`SV_DepthLessEqual`, clamped to the card's own depth), which keeps the
+    GPU's early depth test so card pixels hidden behind nearer cards skip the depth search.
+  - `Benchmarks/iteration-4-quality-levels`: five models at eight view and atlas combinations, every search step and
+    blend setting, a new walk-in test, a dense-forest GPU test, charts, GIFs and distance strips.
+  - README: Quality levels section, bake settings table, limits; roadmap updated.
+- Files: `Libraries/Flatpack/Editor/FlatpackBakeSettings.cs`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `Libraries/Flatpack/Editor/FlatpackSceneOptimizer.cs`, `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader`
+  (and `.shader_c`); `Benchmarks/iteration-4-quality-levels/**`, `Benchmarks/README.md`; `README.md`; `docs/ROADMAP.md`;
+  `.gitignore` (`Assets/flatpack/sweep/`)
+- Testing: editor. 66 bakes and about 140 image evaluations. Early depth A/B in one play session, two alternating
+  rounds: 6 to 29% less GPU time in all six cases; distance ladder identical before and after. All four levels baked
+  through the settings path the UI uses and checked in the materials (search steps 8, 16, 16, 32). Bake window and
+  Optimize Scene opened in the editor: Quality shows, Custom reveals the three fields. Compiles clean. A bake window
+  left open across the code reload logged a HideIf warning every frame until reopened; fresh windows don't.
+
 ## 2026-10-24: Optimize Scene window and roadmap
 
 - Change:

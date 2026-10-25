@@ -1,0 +1,12 @@
+{"model":"wooden_chair_a","preset":"Low","mode":"ForceCard","steps":8,"gpu_samples":" 5.66 6.25 6.13 6.16 5.66 5.37","render":{"tris": 17078, "draws": 80}}
+{"model":"wooden_chair_a","preset":"Medium","mode":"ForceCard","steps":16,"gpu_samples":" 7.24 7.02 7.33 7.65 7.46 7.7","render":{"tris": 17078, "draws": 78}}
+{"model":"wooden_chair_a","preset":"High","mode":"ForceCard","steps":16,"gpu_samples":" 7.48 7.75 7.96 7.97 7.8 7.38","render":{"tris": 17078, "draws": 79}}
+{"model":"wooden_chair_a","preset":"Ultra","mode":"ForceCard","steps":32,"gpu_samples":" 11.68 11.89 12.39 12.3 11.83 11.77","render":{"tris": 17078, "draws": 81}}
+{"model":"tree_small_03","preset":"Low","mode":"ForceCard","steps":8,"gpu_samples":" 5.46 4.97 4.94 5.1 5.04 5.12","render":{"tris": 12116, "draws": 73}}
+{"model":"tree_small_03","preset":"Medium","mode":"ForceCard","steps":16,"gpu_samples":" 7.37 8.09 8.19 7.7 7.13 7.29","render":{"tris": 12116, "draws": 73}}
+{"model":"tree_small_03","preset":"High","mode":"ForceCard","steps":16,"gpu_samples":" 6.8 6.73 6.74 7.06 6.97 6.72","render":{"tris": 12116, "draws": 75}}
+{"model":"tree_small_03","preset":"Ultra","mode":"ForceCard","steps":32,"gpu_samples":" 11.93 12 12.39 12.43 12.04 11.91","render":{"tris": 12116, "draws": 75}}
+{"model":"knight_statue_01","preset":"Low","mode":"ForceCard","steps":8,"gpu_samples":" 4.77 4.43 4.44 4.79 4.75 4.62","render":{"tris": 19360, "draws": 83}}
+{"model":"knight_statue_01","preset":"Medium","mode":"ForceCard","steps":16,"gpu_samples":" 5.61 5.23 5.75 5.96 5.5 5.83","render":{"tris": 19360, "draws": 81}}
+{"model":"knight_statue_01","preset":"High","mode":"ForceCard","steps":16,"gpu_samples":" 5.92 6.23 5.96 5.73 5.56 6.06","render":{"tris": 19360, "draws": 87}}
+{"model":"knight_statue_01","preset":"Ultra","mode":"ForceCard","steps":32,"gpu_samples":" 8.03 8.19 7.9 8.02 7.91 7.46","render":{"tris": 19360, "draws": 80}}

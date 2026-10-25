@@ -65,6 +65,27 @@ that difference changes about half as much from one step to the next, which is w
 The default swap happens at 30 radii, well past all of these. Full per-model numbers:
 [`Benchmarks/iteration-3-ten-models`](Benchmarks/iteration-3-ten-models/README.md).
 
+## Quality levels
+
+Pick a level when you bake. Medium is the default and right for most things.
+
+| Level | Views | Atlas | Search steps | Video memory | GPU, worst case | Use it for |
+|---|---|---|---|---|---|---|
+| Low | 12 x 12 | 1024 | 8 | 4 MB | 5.2 ms | Props you only see from far away |
+| **Medium** | 12 x 12 | 2048 | 16 | 16 MB | 6.9 ms | Almost everything |
+| High | 24 x 24 | 4096 | 16 | 64 MB | 6.8 ms | Large props you see from mid range |
+| Ultra | 24 x 24 | 4096 | 32 | 64 MB | 10.6 ms | Thin or detailed props that swap near the camera |
+
+GPU time is 2,500 copies in a dense forest with the camera inside it, the worst case for cards.
+
+![Quality levels by distance, and flicker against the real model](Benchmarks/iteration-4-quality-levels/media/presets_quality.png)
+![The chair at every level while the camera circles](Benchmarks/iteration-4-quality-levels/media/presets_orbit_chair.gif)
+
+More views don't reduce flicker: at every level the card flickers as much as the real model does, and no more. What
+changes is sharpness. Ultra's extra search steps keep thin parts up close (the chair holds up from 3 radii instead of
+16), and High's extra views and pixels help past 8 radii. Measurements, charts and the GPU tests behind the table:
+[`Benchmarks/iteration-4-quality-levels`](Benchmarks/iteration-4-quality-levels/README.md).
+
 ## Install
 
 Flatpack is an s&box library (`anakin.flatpack`). In the editor, open **View > Library Manager**, find Flatpack and
@@ -87,7 +108,7 @@ object using the same model finds the bake on its own once you add the component
 
 **Editor > Flatpack > Optimize Scene** lists every model in the open scene with its copies, triangles and bake status,
 and recommends each one with a reason: big savings, "cheap already", or skip for animated models. Recommended models
-start ticked. **Flatpack Selected** bakes whatever is missing and adds Flatpack to every copy as one step, so Ctrl+Z
+start ticked. Pick a quality level at the bottom, then **Flatpack Selected** bakes whatever is missing and adds Flatpack to every copy as one step, so Ctrl+Z
 takes it all back; **Remove Flatpack from Scene** does the same in reverse.
 
 Other ways in:
@@ -125,8 +146,10 @@ quad's position and size and builds the card from the bake data and the instance
 
 | Setting | Default | Notes |
 |---|---|---|
-| Grid Size | 12 | Views per atlas side. 12 gives 144 views, 15 degrees apart. |
-| Atlas Size | 2048 | 4096 for objects you'll see up close. |
+| Quality | Medium | Low, Medium, High, Ultra (see [Quality levels](#quality-levels)), or Custom for the three below. |
+| Grid Size | 12 | Custom only. Views per atlas side. 12 gives 144 views, 15 degrees apart. 8 ghosts. |
+| Atlas Size | 2048 | Custom only. Grow it with the grid: each view gets Atlas Size / Grid Size pixels. |
+| Search Steps | 16 | Custom only. Written into the material; the biggest lever on quality and GPU cost. |
 | Layout | Hemisphere | Hemisphere for anything on the ground, Sphere for objects seen from below, Cylinder for classic tree billboards. |
 | Z-Locked Card | off | Card only turns around the object's up axis. Always on for Cylinder. |
 | Bake Roughness Ao | on | Roughness and material AO atlas. |
@@ -134,8 +157,8 @@ quad's position and size and builds the card from the bake data and the instance
 | Edge Padding | 16 | Texels of colour grown past each silhouette, so mipmaps don't halo. |
 | Output Folder | next to the model | Relative to `Assets`. |
 
-The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, default
-16), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness**, **Shadow Bias**, **Miss Fallback** (keeps
+The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, set by the
+quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness**, **Shadow Bias**, **Miss Fallback** (keeps
 some sub-step twigs at the cost of ghosting, off by default) and **Sky Occlusion** (darkens enclosed parts using the
 self-shadow bake, for dense foliage). The baker also writes per-mip alpha corrections it measured from the atlas, so
 thin parts keep their coverage as the card shrinks.
@@ -151,14 +174,18 @@ the baker grows colour into the empty space around each silhouette so filtering 
 pixel shader picks the three baked views nearest your view direction, with barycentric weights. For each one it traces
 the pixel's view ray through that view's depth map until it hits the baked surface, so all three land on the same
 point of the model and agree. It blends them, rotates the baked normals by the object's rotation, writes the real
-surface depth, and shades the result with the standard s&box lighting, shadows and fog.
+surface depth, and shades the result with the standard s&box lighting, shadows and fog. The shader promises the GPU
+that this depth is never nearer than the card itself, so pixels hidden behind other cards are thrown away before the
+trace runs (6 to 29% less GPU time in a dense forest).
 
 ## Limits
 
 - Metal parts bake as plain colour, so they light like painted plastic. s&box has no metalness debug view to read
   from. Each material has one Metalness slider for the whole object.
-- Up close the card is only as sharp as one frame: about 170 pixels across at 2048 with a 12 x 12 grid. Use 4096 for
-  objects the camera gets near.
+- Up close the card is only as sharp as one frame: about 170 pixels across at Medium. Flat surfaces seen at a grazing
+  angle (a chair seat at 2 radii) show stair-step streaks at every level.
+- In a dense crowd seen from inside, cards can cost more GPU time than simple models (a 632-triangle chair: 1.9 ms as
+  models, 7.3 ms as cards). Cards pay off at a distance; that's what the swap distance is for.
 - Hemisphere bakes can't show an object from below. Use Sphere for those.
 - Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting.
 - Very thin parts (twigs, spindles, wires) thinner than one texel can't survive the bake, and a fine wire mesh fills

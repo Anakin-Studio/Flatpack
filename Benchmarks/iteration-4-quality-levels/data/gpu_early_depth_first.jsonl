@@ -1,0 +1,12 @@
+{"model":"tree_small_03","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":0,"gpu_samples":" 2.61 2.62 2.7 2.55 2.56 2.62","render":{"tris": 12116, "draws": 75}}
+{"model":"tree_small_03","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":8,"gpu_samples":" 5.2 5.76 5.73 5.76 5.75 5.72","render":{"tris": 12116, "draws": 73}}
+{"model":"tree_small_03","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":16,"gpu_samples":" 7.28 7.31 7.33 7.38 7.41 7.49","render":{"tris": 12116, "draws": 73}}
+{"model":"tree_small_03","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":32,"gpu_samples":" 10.17 10.1 10.28 10.14 10.19 10.09","render":{"tris": 12116, "draws": 75}}
+{"model":"knight_statue_01","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":0,"gpu_samples":" 2.54 2.49 2.5 2.5 2.49 2.49","render":{"tris": 19360, "draws": 85}}
+{"model":"knight_statue_01","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":8,"gpu_samples":" 3.67 3.62 3.55 3.56 3.56 3.59","render":{"tris": 19360, "draws": 86}}
+{"model":"knight_statue_01","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":16,"gpu_samples":" 6.17 6.22 6.3 6.24 6.27 6.22","render":{"tris": 19360, "draws": 83}}
+{"model":"knight_statue_01","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":32,"gpu_samples":" 7.57 7.55 7.57 7.55 7.65 7.83","render":{"tris": 19360, "draws": 86}}
+{"model":"wooden_chair_a","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":0,"gpu_samples":" 2.65 2.57 2.59 2.64 2.58 2.63","render":{"tris": 17078, "draws": 78}}
+{"model":"wooden_chair_a","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":8,"gpu_samples":" 6.03 6.12 6.14 6.02 6.04 6.08","render":{"tris": 17078, "draws": 78}}
+{"model":"wooden_chair_a","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":16,"gpu_samples":" 6.72 6.61 6.56 6.52 6.7 6.56","render":{"tris": 17078, "draws": 82}}
+{"model":"wooden_chair_a","cfg":"g12_a2048","depth":"conservative","mode":"ForceCard","steps":32,"gpu_samples":" 8.21 8.14 7.98 8.11 8.13 8.46","render":{"tris": 17078, "draws": 79}}

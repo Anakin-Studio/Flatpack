@@ -9,3 +9,4 @@ keep renders of models whose sbox.game licence doesn't allow publishing them.
 | [1. First shader](iteration-1-first-shader/README.md) | First working baker and shader, GPU benchmark | 100 hospital beds 47.1 ms to 1.5 ms GPU; cards ghosted and popped while turning |
 | [2. Stable shader](iteration-2-stable-shader/README.md) | Depth ray march, atlas sizing fix, 12 x 12 views, rerun benchmark | Office chair difference from the model 7.02 to 3.73; beds 52.3 ms to 1.6 ms |
 | [3. Ten models](iteration-3-ten-models/README.md) | Ten licensed models, how close you can get, before/after flicker proof | Solid props hold up from 1.5 to 4 radii, foliage from 6 to 8; chair error 8.5 to 3.9 across a full orbit |
+| [4. Quality levels](iteration-4-quality-levels/README.md) | Views vs pixels vs search steps, flicker, walk-in, dense-forest GPU test, early depth test | More views don't reduce flicker (card already matches the model's); four quality levels; 6 to 29% less GPU time |

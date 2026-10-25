@@ -71,11 +71,12 @@ public static class FlatpackBaker
 			throw new ArgumentException( "Pick a valid model to bake." );
 
 		var timer = Stopwatch.StartNew();
-		var n = Math.Clamp( settings.GridSize, 2, 32 );
+		var (grid, atlasSize, searchSteps) = settings.Resolve();
+		var n = Math.Clamp( grid, 2, 32 );
 		// The shader addresses frame (x, y) at (x + u) / n of the atlas, so the atlas must be exactly n frames wide.
 		// 2048 / 12 isn't whole; round the frame down (to keep the atlas a multiple of 4 for block compression) and
 		// shrink the atlas to fit, rather than let the frames drift out of place across the atlas.
-		var cell = (int)settings.AtlasSize / n;
+		var cell = (int)atlasSize / n;
 		while ( (cell * n) % 4 != 0 )
 			cell--;
 		var atlas = cell * n;
@@ -124,7 +125,7 @@ public static class FlatpackBaker
 		var materialFile = Path.Combine( folder, $"{name}_fp.vmat" );
 		File.WriteAllText( materialFile, BuildMaterial(
 			Relative( assetsRoot, albedoFile ), Relative( assetsRoot, normalFile ), raoFile is null ? null : Relative( assetsRoot, raoFile ),
-			n, layout, center, radius, zLocked, mipAlphaScales ) );
+			n, layout, center, radius, zLocked, mipAlphaScales, searchSteps ) );
 		files.Add( materialFile );
 
 		progress?.Invoke( 0.95f, "Compiling material" );
@@ -543,7 +544,7 @@ public static class FlatpackBaker
 		return scales;
 	}
 
-	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales )
+	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales, int searchSteps )
 	{
 		string F( float v ) => v.ToString( "0.000000", CultureInfo.InvariantCulture );
 
@@ -563,6 +564,7 @@ public static class FlatpackBaker
 		sb.AppendLine( $"\tg_flFlatpackZLocked \"{F( zLocked ? 1 : 0 )}\"" );
 		sb.AppendLine( $"\tg_vFlatpackMipAlpha0 \"[{F( mipAlphaScales[0] )} {F( mipAlphaScales[1] )} {F( mipAlphaScales[2] )} {F( mipAlphaScales[3] )}]\"" );
 		sb.AppendLine( $"\tg_vFlatpackMipAlpha1 \"[{F( mipAlphaScales[4] )} {F( mipAlphaScales[5] )} {F( mipAlphaScales[6] )} {F( mipAlphaScales[7] )}]\"" );
+		sb.AppendLine( $"\tg_flFlatpackSearchSteps \"{F( Math.Clamp( searchSteps, 0, 32 ) )}\"" );
 		sb.AppendLine( "}" );
 		return sb.ToString();
 	}

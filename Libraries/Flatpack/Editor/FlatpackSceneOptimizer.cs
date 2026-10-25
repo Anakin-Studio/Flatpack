@@ -112,6 +112,14 @@ public sealed class FlatpackSceneOptimizer : Dialog
 		_summary = Layout.Add( new Label( "" ) { WordWrap = true } );
 		_status = Layout.Add( new Label( "" ) { WordWrap = true } );
 
+		// Quality for the bakes this window makes. Shares the bake window's saved settings, so both stay in step.
+		var settings = EditorCookie.Get( "Flatpack.BakeSettings", new FlatpackBakeSettings() ) ?? new FlatpackBakeSettings();
+		var serializedSettings = settings.GetSerialized();
+		serializedSettings.OnPropertyChanged += _ => EditorCookie.Set( "Flatpack.BakeSettings", settings );
+		var quality = new ControlSheet();
+		quality.AddObject( serializedSettings, p => p.Name == nameof( FlatpackBakeSettings.Quality ) );
+		Layout.Add( quality );
+
 		var footer = Layout.AddRow();
 		footer.Spacing = 8;
 		_remove = footer.Add( new Button( "Remove Flatpack from Scene", "undo" )

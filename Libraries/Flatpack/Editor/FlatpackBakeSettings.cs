@@ -14,20 +14,65 @@ public enum FlatpackAtlasSize
 }
 
 /// <summary>
+/// Quality levels for a bake. Each one sets the number of views, the atlas size and the depth search steps, picked
+/// from the iteration 4 measurements (see <c>Benchmarks/iteration-4-quality-levels</c>).
+/// </summary>
+public enum FlatpackQuality
+{
+	[Title( "Low" ), Description( "12 x 12 views, 1024 atlas, 8 search steps. About 4 MB. For props you only see from far away (past about 16 bounding radii)." )]
+	Low,
+
+	[Title( "Medium" ), Description( "12 x 12 views, 2048 atlas, 16 search steps. About 16 MB. The default: holds up from about 6 bounding radii." )]
+	Medium,
+
+	[Title( "High" ), Description( "24 x 24 views, 4096 atlas, 16 search steps. About 64 MB. Same as Medium up close, closer to the real model past 8 bounding radii." )]
+	High,
+
+	[Title( "Ultra" ), Description( "24 x 24 views, 4096 atlas, 32 search steps. About 64 MB and about 1.5x the GPU cost of Medium. Thin parts hold up much closer: for props that swap near the camera." )]
+	Ultra,
+
+	[Title( "Custom" ), Description( "Set views, atlas size and search steps yourself." )]
+	Custom,
+}
+
+/// <summary>
 /// Everything the baker needs to know besides the model. Shown in the bake window with a control sheet.
 /// </summary>
 public sealed class FlatpackBakeSettings
 {
 	/// <summary>
-	/// Frames per atlas side. 12 gives 144 views, 15 degrees apart on the hemisphere: close enough that neighbouring
-	/// frames agree and the card turns without visible switching. Fewer views give sharper frames but more ghosting.
+	/// How good the impostor looks, against memory and GPU cost. Pick Custom to set the numbers yourself.
 	/// </summary>
-	[Property, Range( 4, 16 ), Step( 1 )] public int GridSize { get; set; } = 12;
+	[Property] public FlatpackQuality Quality { get; set; } = FlatpackQuality.Medium;
 
 	/// <summary>
-	/// Atlas width and height. Each frame gets AtlasSize / GridSize pixels.
+	/// Frames per atlas side. 12 gives 144 views, 15 degrees apart on the hemisphere. 8 ghosts visibly; past 12, more
+	/// views only help a little unless the atlas grows with them. Used when Quality is Custom.
 	/// </summary>
-	[Property] public FlatpackAtlasSize AtlasSize { get; set; } = FlatpackAtlasSize.Size2048;
+	[Property, Range( 4, 32 ), Step( 1 ), ShowIf( nameof( Quality ), FlatpackQuality.Custom )] public int GridSize { get; set; } = 12;
+
+	/// <summary>
+	/// Atlas width and height. Each frame gets AtlasSize / GridSize pixels. Used when Quality is Custom.
+	/// </summary>
+	[Property, ShowIf( nameof( Quality ), FlatpackQuality.Custom )] public FlatpackAtlasSize AtlasSize { get; set; } = FlatpackAtlasSize.Size2048;
+
+	/// <summary>
+	/// Depth search steps per frame, written into the material (you can change it there later). The biggest single
+	/// lever on both quality and GPU cost: 8 ghosts thin parts, 32 costs about 1.5x of 16. Used when Quality is Custom.
+	/// </summary>
+	[Property, Range( 0, 32 ), Step( 1 ), ShowIf( nameof( Quality ), FlatpackQuality.Custom )] public int SearchSteps { get; set; } = 16;
+
+	/// <summary>
+	/// The views, atlas size and search steps this bake will use: the quality level's, or the custom values.
+	/// </summary>
+	public (int GridSize, FlatpackAtlasSize AtlasSize, int SearchSteps) Resolve() => Quality switch
+	{
+		FlatpackQuality.Low => (12, FlatpackAtlasSize.Size1024, 8),
+		FlatpackQuality.Medium => (12, FlatpackAtlasSize.Size2048, 16),
+		FlatpackQuality.High => (24, FlatpackAtlasSize.Size4096, 16),
+		FlatpackQuality.Ultra => (24, FlatpackAtlasSize.Size4096, 32),
+		_ => (GridSize, AtlasSize, SearchSteps),
+	};
 
 	/// <summary>
 	/// Which view directions get frames.

@@ -372,7 +372,10 @@ PS
 	struct FlatpackPixelOutput
 	{
 		float4 vColor : SV_Target0;
-		float flDepth : SV_Depth;
+		// Conservative depth: the traced surface always lies behind the card (reverse Z, so its depth value is less or
+		// equal). Promising that keeps the GPU's early depth test: card pixels already hidden behind something nearer are
+		// rejected before the depth search runs, instead of every overlapping card tracing its full search.
+		float flDepth : SV_DepthLessEqual;
 	};
 
 	// What the three frames add up to at one pixel. Everything is summed with weight * coverage.
@@ -634,6 +637,10 @@ PS
 		// by the shadow bias, so the forward depth always passes and then writes the true surface depth.
 		float4 clipPos = Position3WsToPs( depthWs );
 		o.flDepth = g_flViewportMinZ + saturate( clipPos.z / clipPos.w ) * ( g_flViewportMaxZ - g_flViewportMinZ );
+
+		// Keep the promise made above. Only matters with the camera inside the bounds, where the card sits in front of
+		// the centre but not in front of everything.
+		o.flDepth = min( o.flDepth, i.vPositionSs.z );
 
 		return o;
 	}

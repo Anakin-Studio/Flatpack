@@ -7,7 +7,7 @@ s&box engine already offers that Flatpack doesn't use yet. Every item below is t
 
 Effort: **S** a day or two, **M** about a week, **L** longer.
 
-## Done in this round
+## Done: one-click scene optimiser
 
 - **Optimize Scene** (Editor > Flatpack > Optimize Scene). One window lists every model in the open scene with copies,
   triangles and bake status, and recommends each one with a reason ("293,609 triangles each: big saving", "Cheap
@@ -15,7 +15,18 @@ Effort: **S** a day or two, **M** about a week, **L** longer.
   **Flatpack Selected** bakes what's missing and adds Flatpack to every copy in one undo step; **Remove Flatpack from
   Scene** takes it all off, also undoable. Tested: 10 objects added, Ctrl+Z, re-apply, remove, Ctrl+Z.
 
-## Next: make it native (iteration 4)
+## Done in iteration 4: quality levels
+
+Measured in [`Benchmarks/iteration-4-quality-levels`](../Benchmarks/iteration-4-quality-levels/README.md).
+
+- **Quality levels** (Low, Medium, High, Ultra, Custom) in every way of baking, including a picker in Optimize Scene.
+  The sweep behind them: more views don't reduce flicker (the card already flickers as much as the real model and no
+  more); 8 x 8 views ghost; pixels per view decide sharpness up close; search steps are the biggest lever on both
+  quality and GPU cost.
+- **Early depth test** in the shader (conservative depth): 6 to 29% less GPU time where cards overlap, same images.
+- Tested and dropped: blend sharpness above 1 (worse), a higher minimum search step count at range (no change).
+
+## Next: make it native (iteration 5)
 
 1. **The card becomes a real LOD of the model (M).** s&box can build a model with LODs from code:
    `ModelBuilder.AddMesh(mesh, lod)` and `WithLodDistance`, and Flatpack can read every LOD of the source with
@@ -26,22 +37,21 @@ Effort: **S** a day or two, **M** about a week, **L** longer.
    indirect draws, keyed by model, and picks LODs on the GPU (up to 4 buckets). Once the card is a LOD (3 or lower) of a
    real model, painted forests get impostors automatically. For that the bake also writes a `.vmdl` (KV3 text with a
    `LODGroupList`) next to the source, since clutter stores model paths.
-3. **Presets and project defaults (S).** "Tree", "Prop", "Building", "Hero (close-up)" presets in the bake window and the
-   optimiser, and a project-wide default. Putting `[Property]` settings on `FlatpackSystem` shows them on Project
-   Settings > Systems with no extra UI. Fixes: too many dials (Epic's Impostor Baker does exactly this with preset assets).
+3. **Project default quality (S).** Quality levels shipped in iteration 4; what's left is a project-wide default.
+   Putting `[Property]` settings on `FlatpackSystem` shows them on Project Settings > Systems with no extra UI.
 4. **Quality score after every bake (M).** Run the iteration 3 harness inside the editor after a bake: render model and
    card from a few distances and report "holds up from N bounding radii", with a warning when it never does (fences).
    Then **set the swap distance from that score** instead of a flat 30 radii, and show it as a percentage of screen
    height (Unity's convention), which stays right across resolutions. Fixes: guessing distances; silent bad bakes.
-5. **Far tier: cheaper cards at distance (S).** Beyond a distance, skip the depth search and blend three plain
-   projections; further still, show one view. Iteration 2 measured cards costing more than a tree's own billboard LOD
-   at range; Epic and the Godot addons all tier quality this way.
+5. **Far tier: cheaper cards at distance (S).** Iteration 4 found the search already drops to 4 steps on small cards
+   and raising that floor changed nothing, so the next saving is skipping the search entirely on tiny cards (0 steps
+   ghosts badly up close, but may be invisible below about 30 px). Measure before shipping.
 6. **Memory diet (S to M).** Half-resolution roughness/AO, skip maps that are a single value, and write `.vtex` files
-   directly (`Texture.SaveToVtex`, BC7 or DXT1 where there's no alpha). Today each bake costs about 17 MB; the Godot
+   directly (`Texture.SaveToVtex`, BC7 or DXT1 where there's no alpha). Today a Medium bake costs about 16 MB of video memory and High 64 MB; the Godot
    addon reports 75% savings from half-res material maps and 33% from skipping constant maps. Show the cost in the
    window before baking.
 
-## After that: better looking (iteration 5)
+## After that: better looking (iteration 6)
 
 7. **Foliage translucency (M).** Bake the engine's Transmission view into a spare channel and apply the same
    wrap-and-back-scatter lighting `foliage.shader` uses (`ApplyFoliageLighting`). Fixes: leaves that glow on the real
@@ -54,22 +64,32 @@ Effort: **S** a day or two, **M** about a week, **L** longer.
 10. **Metal parts (M).** Store metalness in the roughness/AO map's spare channel. s&box has no metalness debug view, so
     the baker reads each source material's metalness value and renders a per-material pass. Fixes: chair wheels and
     the dragon's base light like plastic.
-11. **Tree pivots (S).** An option to centre the bake on the trunk (Epic's "Center XY On Mesh Pivot"), which removes
+11. **Grazing-angle streaks (M).** Flat surfaces seen edge-on (a chair seat at 2 radii) show stair-step streaks at
+    every quality level: the search lands on neighbouring texels of a steep depth slope. Try a filtered final
+    refinement step, or a slope-aware thickness.
+12. **Why 12 x 12 at 4096 loses at range (S).** It was the sharpest bake up close but worse than the default past 12
+    radii. Likely mip alignment: 341-pixel views don't halve cleanly. If so, round views to a power of two.
+13. **Tree pivots (S).** An option to centre the bake on the trunk (Epic's "Center XY On Mesh Pivot"), which removes
     ghosting on trees whose canopy leans off-centre.
 
 ## Easier to live with
 
-12. **Live preview of `.fpack` assets (M).** Click a bake in the asset browser and see the model and card side by side
+Target design for the tools: the bake window shows the quality levels as four cards with memory and "good for" text
+instead of a dropdown; the Flatpack Renderer inspector shows what the object is drawing right now, the swap distance in
+radii and metres with a check against the bake's measured quality (item 4), Auto / Model / Card preview buttons, and
+Re-bake at a higher level one click away; Optimize Scene shows the video memory a bake will add before you apply it.
+
+14. **Live preview of `.fpack` assets (M).** Click a bake in the asset browser and see the model and card side by side
     with a distance slider and an "impostor only" mode; thumbnails show the card. s&box supports this with an
     `[AssetPreview("fpack")]` class (the Clutter tool's preview is the template).
-13. **Stale bakes (M).** Store a fingerprint of the model and bake settings in the `.fpack`; when the model changes
+15. **Stale bakes (M).** Store a fingerprint of the model and bake settings in the `.fpack`; when the model changes
     (`AssetSystem` change events), mark its bake stale and offer **Rebake Stale** in the optimiser. Fixes: cards that
     no longer match the model after an edit.
-14. **Existing-bake prompt (S).** Baking a model that already has a bake asks: replace, keep both, or skip (Epic's
+16. **Existing-bake prompt (S).** Baking a model that already has a bake asks: replace, keep both, or skip (Epic's
     Impostor Baker does this). Fixes: accidental overwrites.
-15. **See what's happening (S).** A scene-view gizmo showing each Flatpack object's swap distance, and a debug tint for
+17. **See what's happening (S).** A scene-view gizmo showing each Flatpack object's swap distance, and a debug tint for
     model / card / fading so popping is easy to track down (Unreal's LOD coloration mode).
-16. **Pre-bake checks (S).** Warn before baking skinned models, translucent materials (they bake as opaque) and models
+18. **Pre-bake checks (S).** Warn before baking skinned models, translucent materials (they bake as opaque) and models
     with no bounds. Partly covered by the optimiser's recommendations.
 
 ## Not planned
