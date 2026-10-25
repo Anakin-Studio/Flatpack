@@ -38,12 +38,12 @@ models everywhere, with the model's own LODs. GPU milliseconds, two rounds avera
 |---|---|---|---|---|---|
 | Tree (534,000 triangles, has its own LODs) | 28.8 | **10.0** | 20.5 | 27.0 | 30.2 |
 | Knight statue (3,800 triangles) | 5.7 | 4.0 | 4.0 | **3.5** | 3.7 |
-| Wooden chair (632 triangles) | **1.9** | 6.2 | 5.5 | 3.6 | 4.1 |
+| Wooden chair (912 triangles) | **1.9** | 6.2 | 5.5 | 3.6 | 4.1 |
 
 - **Heavy models: swap as soon as the card looks right.** The tree forest drew in 10 ms swapping at 8 radii against
   29 ms native. At 30 radii almost nothing was saved: the tree's own LODs already simplify the far trees, and the
   cost sits in the trees close to the camera.
-- **Light models don't gain.** The 632-triangle chair is cheaper as a real model at every swap distance; a card up
+- **Light models don't gain.** The 912-triangle chair is cheaper as a real model at every swap distance; a card up
   close covers many pixels and each one runs the depth search. The scene optimiser marks models like this as low gain.
 - **Swapping further out (48 radii) gives the tree's gain back** and is no better for the knight.
 

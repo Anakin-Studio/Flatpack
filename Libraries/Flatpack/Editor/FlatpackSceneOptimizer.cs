@@ -167,7 +167,7 @@ public sealed class FlatpackSceneOptimizer : Dialog
 			var entry = _entries.FirstOrDefault( e => e.Model == model );
 			if ( entry is null )
 			{
-				entry = new Entry { Model = model, Triangles = model.GetIndexCountForLod( 0 ) / 3 };
+				entry = new Entry { Model = model, Triangles = Lod0Triangles( model ) };
 				_entries.Add( entry );
 			}
 
@@ -192,6 +192,20 @@ public sealed class FlatpackSceneOptimizer : Dialog
 	/// <summary>
 	/// The recommendation rules. Kept in one place so the reasons in the list always match the decision.
 	/// </summary>
+	/// <summary>
+	/// Triangles in the model's most detailed LOD, every mesh and draw call. <c>Model.GetIndexCountForLod</c> counts only
+	/// the first draw call, which undercounts models with several materials (a tree's bark and leaves: 293,609 of 534,024).
+	/// </summary>
+	public static int Lod0Triangles( Model model )
+	{
+		var meshes = model.MeshInfo?.Meshes;
+		if ( meshes is null || meshes.Length == 0 )
+			return model.GetIndexCountForLod( 0 ) / 3;
+
+		var total = meshes.Where( m => ((long)m.LodMask & 1) != 0 ).Sum( m => (long)m.Triangles );
+		return (int)Math.Min( total > 0 ? total : model.GetIndexCountForLod( 0 ) / 3, int.MaxValue );
+	}
+
 	static void Recommend( Entry e )
 	{
 		if ( e.Flatpacked == e.Instances )

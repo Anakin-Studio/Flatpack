@@ -1,114 +1,68 @@
 # Flatpack: sbox.game package page kit
 
-Copy and images for the `anakin.flatpack` package page. Paste the text blocks into the package's edit page on sbox.game
-after publishing from the Library Manager.
+Everything the `anakin.flatpack` package page asks for. Images are made from the latest bakes (iteration 6), always
+with the real model beside the card, using licensed models only.
 
-## Package
+## Fields
 
 | Field | Value |
 |---|---|
 | Title | Flatpack |
-| Ident | `anakin.flatpack` |
-| Type | Library |
-| Org | Anakin Studio (`anakin`) |
-| Asset licence (publish wizard) | CC BY 4.0 (the library's own assets are its two shaders; the code is MIT on GitHub) |
+| Description (108 of 128) | `Bake any model into a 3D impostor card that takes over at a distance. Same look, a fraction of the GPU cost.` |
+| Tags | `impostor lod optimization performance rendering billboard foliage trees octahedral editor tool` |
+| Category | Rendering |
+| Publish state | Hidden until the images are up, then Released |
 | Source | https://github.com/Anakin-Studio/Flatpack |
-
-## Summary
-
-For the one-line summary under the title (92 characters):
-
-```
-Bake any model into a 1-face impostor card that looks, lights and shadows like the original.
-```
-
-Shorter, if the field is tight (61 characters):
-
-```
-Turn 263,000-face models into one card. Same look, tiny cost.
-```
-
-## Description
-
-```markdown
-## One face instead of 263,066
-
-Flatpack bakes a high-poly model into an impostor: a single camera-facing card that shows the model from every
-angle, lights like it and casts its shadow. Up close you see your real model with all its LODs. Past a distance you
-choose, the card takes over.
-
-## Set it up in one click
-
-1. Add **Flatpack Renderer** to any object with a model.
-2. Press **Bake Impostor** in the inspector.
-
-Every other object with the same model finds the bake on its own. For a whole level, **Editor > Flatpack > Impostor
-Baker** bakes a list of models, and **Apply to Scene** adds the component to every object that has a bake.
-
-## What it saves
-
-Measured on an RTX 3090, same scene, real models against cards:
-
-- 100 hospital beds (974,642 triangles each): **52.3 ms to 1.6 ms** of GPU time.
-- 100 trees (263,066 triangles each) at close range: **10.2 ms to 4.2 ms**, 336 draw calls to 53.
-- 400 office chairs (15,378 triangles each): **4.1 ms to 1.5 ms**.
-
-Cards cost about the same whatever they replace, so the bigger the model, the bigger the saving.
-
-## What you get
-
-- **Baker** that renders your model from 144 directions in a few seconds: albedo, normals, depth, roughness and AO.
-- **Impostor shader** that traces into the baked depth of the three nearest views so they line up as you walk around,
-  then shades with the standard s&box lighting, shadows and fog.
-- **Flatpack Renderer**: distance swap with hysteresis so nothing flickers at the boundary, optional dither
-  cross-fade, optional extra mesh LODs before the card, and an automatic swap distance from the model's size.
-- **One system for thousands**: a single time-sliced distance pass per frame, and all cards from one bake instance
-  together.
-- Hemisphere, full sphere and cylinder (tree billboard) layouts, atlases from 512 to 4096.
-
-## Good to know
-
-- Best on models with thousands of triangles or more. Very cheap models, or ones that already end in a billboard LOD,
-  gain little.
-- Metal parts light like painted surfaces on the card, and foliage translucency and wind don't carry over.
-- Bake at 4096 for objects the camera gets close to.
-
-Free and open source (MIT): github.com/Anakin-Studio/Flatpack
-
-Made by Anakin Studio.
-```
-
-## Tags
-
-Use the first five if the page limits tags; add the rest where it allows.
-
-```
-library, rendering, optimization, lod, impostor
-performance, foliage, trees, shader, editor, tool, billboard
-```
 
 ## Images
 
-All images use Tree_small_01 by Small Box Studio (sbox.game/smallboxstudio/treesmall01, CC BY 4.0), credited on the
-image. Keep the credit if you crop them.
+| File | Size | Where | Shows |
+|---|---|---|---|
+| `package_square_512.png` | 512 x 512 | Square thumbnail | The real tree and its card, 572,544 triangles against 2 |
+| `package_wide_910x512.png` | 910 x 512 | Wide thumbnail | The same, labelled |
+| `package_tall_512x910.png` | 512 x 910 | Tall thumbnail | The same, stacked |
+| `screenshot_1_tree.png` | 1920 x 1080 | Screenshot | Real tree and card side by side from 6 bounding radii, Ultra bake |
+| `screenshot_2_forest.png` | 1920 x 1080 | Screenshot | 2,500 trees, split screen: native models left, Flatpack right, with GPU times |
+| `screenshot_3_swap_chart.png` | 1920 x 1080 | Screenshot | GPU time against swap distance for a heavy, a medium and a light model, with native |
+| `flatpack_trailer_1080p.mp4` | 1920 x 1080, 19 s | Video | Title, the tree turning (real against card), the fly-in over the forest split screen, end card |
 
-| File | Size | Use |
-|---|---|---|
-| `thumbnail_1024.png` | 1024 x 1024 | Package thumbnail. The tree beside its card, "263,066 faces" against "1 face". |
-| `cover_1920x1080.png` | 1920 x 1080 | Cover or first gallery image. 256 Flatpack trees: 926 triangles and 20 draw calls on screen. |
-| `screenshot_before_after.png` | 2000 x 1070 | Gallery. Wireframe model against the card with its one quad outlined. |
-| `screenshot_forest.png` | 1920 x 1080 | Gallery. The forest shot without text. |
-| `turntable.gif` | 512 x 376 | Gallery or description. Model and card rotating side by side. |
+Where the numbers come from: the GPU times (28.8 ms native, 10.0 ms Flatpack) are the swap-distance test of the same
+2,500-tree field on an RTX 3090 ([`Benchmarks/iteration-6-real-scenes`](../Benchmarks/iteration-6-real-scenes/README.md)).
+The triangle counts are the models' most detailed LODs, every draw call counted.
 
-Alt text, if the page asks for it:
+In the forest split screen, the far native trees look darker than the near ones: that's the tree model's own lowest
+LODs. Flatpack's cards keep the near trees' colour. It's what the engine draws; nothing was adjusted.
 
-- Thumbnail: "A 263,066-face tree beside its Flatpack impostor card, which has one face."
-- Cover: "A field of 256 trees drawn as Flatpack impostor cards."
-- Before/after: "Wireframe of a dense tree model next to its single-quad impostor card."
-- Turntable: "A tree model and its impostor card turning side by side, looking the same from every angle."
+## Longer description (for the package page body, if it has one)
 
-## Don't use
+```markdown
+## One card instead of half a million triangles
 
-The test suite also bakes a hospital bed, an office chair, SCP-173 and a plant from sbox.game. Their creators set no
-licence, so keep them off the package page. The benchmark numbers above come from them, which is fine; their images
-are not.
+Flatpack bakes a model into an impostor: a card that shows the model from every angle, lights like it and casts its
+shadow. Up close you see your real model. From the distance where the card looks the same (Flatpack measures it after
+every bake), the card takes over.
+
+## Set it up
+
+1. Add **Flatpack Renderer** to an object with a model, press **Bake Impostor**.
+2. Or open **Editor > Flatpack > Optimize Scene**: it lists every model in your scene, recommends what to bake, and
+   applies it to every copy in one undoable step.
+
+## What it saves
+
+- 2,500 trees (534,024 triangles each): **28.8 ms to 10.0 ms** of GPU time.
+- On a real map (an SCP facility with a forest on the surface): **13.1 ms to 9.5 ms** on the surface. Indoors, where
+  walls hide distant props, the saving is small: there the cost is lights and draw calls, not triangles.
+- Very light models (under a few thousand triangles) are cheaper left as models; the optimiser tells you which.
+
+## Quality levels
+
+Low, Medium (default), High, Ultra, or Auto, which picks the cheapest level that still looks right at your swap
+distance. Bakes take a few seconds.
+
+Open source, MIT: https://github.com/Anakin-Studio/Flatpack
+```
+
+## Credits for the images
+
+Tree_small_01 and Tree_small_03 by [Small Box Studio](https://sbox.game/smallboxstudio) (CC BY 4.0).

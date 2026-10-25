@@ -3,9 +3,9 @@
 **Impostors for s&box, by Anakin Studio.** Flatpack bakes a high-poly model into a single camera-facing card that
 looks like the model from every angle, lights like it, and casts its shadow.
 
-![A 263,066-face tree beside its Flatpack card: one face](docs/media/flatpack_hero.png)
+![A 572,544-triangle tree beside its Flatpack card: one face](docs/media/flatpack_hero.png)
 
-Far from the camera, a 263,066-face tree and a 2-triangle card look the same, and the card costs almost nothing to draw.
+Far from the camera, a 572,544-triangle tree and a 2-triangle card look the same, and the card costs almost nothing to draw.
 Flatpack renders the model from 144 directions into texture atlases, then draws one quad that picks the three views
 nearest yours, traces into their baked depth so they line up, and blends them as you walk around it.
 
@@ -23,7 +23,7 @@ nearest yours, traces into their baked depth so they line up, and blends them as
 | Model (instances) | GPU ms, model | GPU ms, cards |
 |---|---:|---:|
 | Hospital bed, 974,642 tris (100) | 52.29 | 1.63 |
-| Small tree, 263,066 tris, close (100) | 10.23 | 4.21 |
+| Small tree, 572,544 tris, close (100) | 10.23 | 4.21 |
 | Office chair, 15,378 tris (400) | 4.11 | 1.51 |
 | SCP-173 statue, 6,630 tris (400) | 3.16 | 1.72 |
 | Tall plant, 1,832 tris (400) | 1.75 | 1.70 |
@@ -106,7 +106,7 @@ everywhere, with their own LODs.
 |---|---|---|---|
 | Tree (534,000 triangles) | 28.8 ms | **10.0 ms** | 8 radii, where the card starts to look right |
 | Knight statue (3,800 triangles) | 5.7 ms | **3.5 ms** | 30 radii |
-| Wooden chair (632 triangles) | **1.9 ms** | 3.6 ms | (cheaper as a real model) |
+| Wooden chair (912 triangles) | **1.9 ms** | 3.6 ms | (cheaper as a real model) |
 
 Heavy models gain the most, and only if the card takes over as soon as it looks right: at 30 radii the tree forest
 saved almost nothing, because its own LODs already simplify the far trees. Very light models are cheaper as real
@@ -217,7 +217,7 @@ trace runs (6 to 29% less GPU time in a dense forest).
   from. Each material has one Metalness slider for the whole object.
 - Up close the card is only as sharp as one frame: about 170 pixels across at Medium. Flat surfaces seen at a grazing
   angle (a chair seat at 2 radii) show stair-step streaks at every level.
-- In a dense crowd seen from inside, cards can cost more GPU time than simple models (a 632-triangle chair: 1.9 ms as
+- In a dense crowd seen from inside, cards can cost more GPU time than simple models (a 912-triangle chair: 1.9 ms as
   models, 7.3 ms as cards). Cards pay off at a distance; that's what the swap distance is for.
 - Hemisphere bakes can't show an object from below. Use Sphere for those.
 - Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting.

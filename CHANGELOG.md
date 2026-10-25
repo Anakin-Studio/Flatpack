@@ -5,6 +5,23 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: sbox.game kit from the latest bakes, triangle counts fixed
+
+- Change:
+  - `marketing/`: three package thumbnails at the sizes sbox.game asks for (512 x 512, 910 x 512, 512 x 910), three
+    1920 x 1080 screenshots (tree real against card, 2,500-tree forest split screen native against Flatpack with GPU
+    times, swap-distance chart) and a 19-second 1080p trailer. Page text updated: description, tags, category, longer
+    description with the Orion map results. The iteration 2 images are removed.
+  - Scene optimiser: counts every draw call of a model's most detailed LOD (`Lod0Triangles`). `GetIndexCountForLod`
+    counts only the first, so multi-material models were undercounted (Tree_small_03: 293,609 of 534,024).
+  - Docs: Tree_small_01 has 572,544 triangles (was given as 263,066), the wooden chair 912 (was 632, an average of
+    rendered triangles with its own LODs). The README hero image still shows the old number until it's re-rendered.
+- Files: `marketing/**`; `Libraries/Flatpack/Editor/FlatpackSceneOptimizer.cs`; `README.md`,
+  `Benchmarks/iteration-6-real-scenes/README.md`, `Benchmarks/iteration-6-real-scenes/media/swap_distance_gpu.png`
+- Testing: editor. Marketing renders made in the editor at 1080p and 70 degrees FOV from the latest Medium and Ultra
+  bakes; forest frames in play mode with Flatpack swapping on its own. Triangle counts checked against `Model.MeshInfo`
+  for six models. Compiles clean.
+
 ## 2026-10-25: Swap where the card looks right, bake check calibrated by eye (iteration 6, part 1)
 
 - Change:
