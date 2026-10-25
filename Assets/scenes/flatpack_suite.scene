@@ -1,0 +1,1026 @@
+{
+  "__guid": "7aff8a4b-b3aa-4461-8224-da9a6316c3cb",
+  "GameObjects": [
+    {
+      "__guid": "8c093c2c-2a74-4be5-a0f9-36965ed8a7f0",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Sun",
+      "Position": "0,0,0",
+      "Rotation": "-0.115075134,0.364971697,0.277815908,0.881119549",
+      "Scale": "1,1,1",
+      "Tags": "light_directional,light",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.DirectionalLight",
+          "__guid": "2d86fdd9-5114-4402-8268-26c900056e57",
+          "__enabled": true,
+          "Flags": 0,
+          "ContactShadows": true,
+          "Contribution": "Diffuse, Specular, Transmissive",
+          "FogMode": "Enabled",
+          "FogStrength": 1,
+          "LightColor": "2.5,2.375,2.125,2.5",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "ShadowBias": 0,
+          "ShadowCascadeCount": 4,
+          "ShadowCascadeSplitRatio": 0.91,
+          "ShadowHardness": 0,
+          "Shadows": true,
+          "SkyColor": "0.27,0.33,0.42,0.6",
+          "Visualizer": {}
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "acafd485-50f6-4575-975f-4eb796b57606",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Sky",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "skybox",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.SkyBox2D",
+          "__guid": "1c4f06a6-7515-4648-81d6-209b7a731f13",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "SkyIndirectLighting": true,
+          "SkyMaterial": {
+            "Id": "e05fd285-6edd-4c7b-9b31-8a41a0265c3e",
+            "Path": "materials/skybox/skybox_day_01.vmat"
+          },
+          "Tint": "1,1,1,1"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "37d188e9-5316-4117-b523-ba7fec20d017",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Envmap",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.EnvmapProbe",
+          "__guid": "ef55d6f1-3530-41c9-9dce-9adbc07c4d78",
+          "__enabled": true,
+          "Flags": 0,
+          "__version": 1,
+          "BakedTexture": null,
+          "Bounds": {
+            "Mins": "-50000,-50000,-50000",
+            "Maxs": "50000,50000,50000"
+          },
+          "DelayBetweenUpdates": 0.1,
+          "Feathering": 8,
+          "FrameInterval": 5,
+          "MaxDistance": 512,
+          "Mode": "CustomTexture",
+          "MultiBounce": false,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Priority": 0,
+          "Projection": "Sphere",
+          "RenderExcludeTags": "",
+          "Resolution": "Small",
+          "Texture": "textures/cubemaps/default2.vtex",
+          "TintColor": "1,1,1,1",
+          "UpdateStrategy": "OnEnabled",
+          "ZFar": 4096,
+          "ZNear": 16
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "2ce3bf77-2edd-4c78-920c-755ca588b7c0",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Ground",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "100,100,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.ModelRenderer",
+          "__guid": "435018f0-9d03-4293-9f31-6e3708ae8bef",
+          "__enabled": true,
+          "Flags": 0,
+          "BodyGroups": 18446744073709551615,
+          "CreateAttachments": false,
+          "LodOverride": null,
+          "MaterialGroup": null,
+          "MaterialOverride": {
+            "Id": "e071a2f2-c874-4337-9eb0-32ce4a708682",
+            "Path": "materials/dev/reflectivity_30.vmat"
+          },
+          "Materials": null,
+          "Model": {
+            "Id": "00000000-0000-0000-306d-2b8df8010000",
+            "Path": "models/dev/plane.vmdl"
+          },
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "RenderOptions": {
+            "GameLayer": true,
+            "OverlayLayer": false,
+            "BloomLayer": false,
+            "AfterUILayer": false
+          },
+          "RenderType": "On",
+          "Tint": "1,1,1,1"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "5c3075e4-df2e-45c4-b84e-3476bdbe613e",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Camera",
+      "Position": "-900,-640.460876,250",
+      "Rotation": "-0,0.109116778,0,0.994028986",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.CameraComponent",
+          "__guid": "7a18d99d-f742-4537-bb1b-833548607ba8",
+          "__enabled": true,
+          "Flags": 0,
+          "BackgroundColor": "0.33333,0.46275,0.52157,1",
+          "ClearFlags": "All",
+          "EnablePostProcessing": true,
+          "FieldOfView": 50,
+          "FovAxis": "Horizontal",
+          "IsMainCamera": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Orthographic": false,
+          "OrthographicHeight": 1204,
+          "PostProcessAnchor": null,
+          "Priority": 1,
+          "RenderExcludeTags": "",
+          "RenderTags": "",
+          "RenderTexture": null,
+          "TargetEye": "None",
+          "Viewport": "0,0,1,1",
+          "ZFar": 50000,
+          "ZNear": 10
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "717d373b-36c9-4a77-9916-ff8084d91a81",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Flatpack Suite",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [],
+      "Children": [
+        {
+          "__guid": "0ab44470-b544-4a78-a5d8-b24ba4fe1e63",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "hospital_bed",
+          "Position": "0,-72.1218262,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "f389d046-6743-4e9b-92cb-3f110bc5ad50",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "model",
+              "Position": "0,65.8503571,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "fe10eec1-4df4-42d6-83a9-a453a3488e17",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "3da7da80-1db9-4976-92e2-ad58f1d98949",
+                    "Path": "models/hospital/hospital_bed/hospital_bed.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "9ad07e13-e2f4-45d2-9402-487ef57bda5c",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "flatpack",
+              "Position": "0,-65.8503571,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "38ae3ab1-7aa1-4385-803e-53556e31a2d0",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "3da7da80-1db9-4976-92e2-ad58f1d98949",
+                    "Path": "models/hospital/hospital_bed/hospital_bed.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                },
+                {
+                  "__type": "Flatpack.FlatpackRenderer",
+                  "__guid": "9cbe7443-6654-411c-b965-3869c38a22cc",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "CrossFade": false,
+                  "FadeTime": 0.35,
+                  "Hysteresis": 200,
+                  "Impostor": {
+                    "Id": "a6f571e9-037b-4cbd-8cc5-ded76691592c",
+                    "Path": "flatpack/suite/hospital_bed.fpack"
+                  },
+                  "Levels": [],
+                  "Mode": "ForceCard",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Source": {
+                    "_type": "component",
+                    "component_id": "38ae3ab1-7aa1-4385-803e-53556e31a2d0",
+                    "go": "9ad07e13-e2f4-45d2-9402-487ef57bda5c",
+                    "component_type": "ModelRenderer"
+                  },
+                  "SwapDistance": 2000
+                }
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "__guid": "6bd56923-3731-4a25-ad03-de20f46c3790",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "tree_small_01",
+          "Position": "0,-462.657288,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "95860b1d-61f1-46c7-a963-c0af9c7f8830",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "model",
+              "Position": "0,248.477615,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "aba6b3ee-db5f-4641-a04c-4768164a2214",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "ec7389cd-a0ab-4fe2-849c-6f3cc574632b",
+                    "Path": "pr/small/small_01/tree_small_01.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "d5223c10-52fe-4cd6-bfd8-f9c48e2c24eb",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "flatpack",
+              "Position": "0,-248.477615,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "0f8480f8-8d3b-453f-8c2b-5737a6d19c84",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "ec7389cd-a0ab-4fe2-849c-6f3cc574632b",
+                    "Path": "pr/small/small_01/tree_small_01.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                },
+                {
+                  "__type": "Flatpack.FlatpackRenderer",
+                  "__guid": "32f4c790-3da8-474d-b106-622fa42e8d8a",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "CrossFade": false,
+                  "FadeTime": 0.35,
+                  "Hysteresis": 200,
+                  "Impostor": {
+                    "Id": "7d12e6fc-4f37-40a5-a1cc-6e74579db0a2",
+                    "Path": "flatpack/suite/tree_small_01.fpack"
+                  },
+                  "Levels": [],
+                  "Mode": "ForceCard",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Source": {
+                    "_type": "component",
+                    "component_id": "0f8480f8-8d3b-453f-8c2b-5737a6d19c84",
+                    "go": "d5223c10-52fe-4cd6-bfd8-f9c48e2c24eb",
+                    "component_type": "ModelRenderer"
+                  },
+                  "SwapDistance": 2000
+                }
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "__guid": "c5a133e1-7219-4bd5-a265-43ba7cde504d",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "office_chair",
+          "Position": "0,-841.261658,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "87a46edb-b612-4476-9ed7-08c82ea0ee3a",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "model",
+              "Position": "0,39.0761299,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "157eb365-99da-47a9-9adc-661ea2f803f6",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "05b88996-5bf9-4613-984b-9c574f3af1e3",
+                    "Path": "models/office chair/office_chair.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "1fc14713-dddf-46e0-9f09-2548f2c5334b",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "flatpack",
+              "Position": "0,-39.0761299,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "ede2459e-cc44-4c5d-9831-60e0e204c62f",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "05b88996-5bf9-4613-984b-9c574f3af1e3",
+                    "Path": "models/office chair/office_chair.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                },
+                {
+                  "__type": "Flatpack.FlatpackRenderer",
+                  "__guid": "48dd3ed7-c3b4-4f06-8df3-5d4364462f7c",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "CrossFade": false,
+                  "FadeTime": 0.35,
+                  "Hysteresis": 200,
+                  "Impostor": {
+                    "Id": "d0e69001-c2f2-40d9-b7e6-930c00f6d9d7",
+                    "Path": "flatpack/suite/office_chair.fpack"
+                  },
+                  "Levels": [],
+                  "Mode": "ForceCard",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Source": {
+                    "_type": "component",
+                    "component_id": "ede2459e-cc44-4c5d-9831-60e0e204c62f",
+                    "go": "1fc14713-dddf-46e0-9f09-2548f2c5334b",
+                    "component_type": "ModelRenderer"
+                  },
+                  "SwapDistance": 2000
+                }
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "__guid": "88b5bd77-58c1-466c-9e5f-af883c4cfbf6",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "173_v1",
+          "Position": "0,-981.467651,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "d016c5f7-a996-4ba1-bf11-62bb3cc10d13",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "model",
+              "Position": "0,49.0183754,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "ef4b2c6f-3b5a-4a49-9386-faba94003474",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "ebeaca31-8809-47c2-94a8-24f81a354552",
+                    "Path": "models/huey/scp_unity/scp/173_v1.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "ecd2f1ab-373a-47b9-8628-65c6951e56d2",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "flatpack",
+              "Position": "0,-49.0183754,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "44c21acd-e1e8-46b3-b807-44023733d39d",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "ebeaca31-8809-47c2-94a8-24f81a354552",
+                    "Path": "models/huey/scp_unity/scp/173_v1.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                },
+                {
+                  "__type": "Flatpack.FlatpackRenderer",
+                  "__guid": "4c0bc70f-7f26-492f-99ce-49c6fa58662d",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "CrossFade": false,
+                  "FadeTime": 0.35,
+                  "Hysteresis": 200,
+                  "Impostor": {
+                    "Id": "fab555d3-1b71-426e-ab6e-2615f19af458",
+                    "Path": "flatpack/suite/173_v1.fpack"
+                  },
+                  "Levels": [],
+                  "Mode": "ForceCard",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Source": {
+                    "_type": "component",
+                    "component_id": "44c21acd-e1e8-46b3-b807-44023733d39d",
+                    "go": "ecd2f1ab-373a-47b9-8628-65c6951e56d2",
+                    "component_type": "ModelRenderer"
+                  },
+                  "SwapDistance": 2000
+                }
+              ],
+              "Children": []
+            }
+          ]
+        },
+        {
+          "__guid": "f95719ec-78f2-4083-b2fe-50412758455b",
+          "__version": 2,
+          "Flags": 0,
+          "Name": "gta5_apa_mp_h_acc_plant_tall_01",
+          "Position": "0,-1157.01611,0",
+          "Rotation": "0,0,0,1",
+          "Scale": "1,1,1",
+          "Tags": "",
+          "Enabled": true,
+          "NetworkMode": 2,
+          "NetworkFlags": 0,
+          "NetworkOrphaned": 0,
+          "NetworkTransmit": true,
+          "OwnerTransfer": 1,
+          "Components": [],
+          "Children": [
+            {
+              "__guid": "1820a494-c186-4ca5-ac7d-74411eb143a3",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "model",
+              "Position": "0,70.4807587,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "26822ef6-8180-4606-b597-6c7f6a8d0173",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "507cb01f-6973-4c92-800c-8372ced16a7a",
+                    "Path": "pr/gta5_apa_mp_h_acc_plant_tall_01.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                }
+              ],
+              "Children": []
+            },
+            {
+              "__guid": "406b9c89-a381-4e27-83ee-f1aa241f55e3",
+              "__version": 2,
+              "Flags": 0,
+              "Name": "flatpack",
+              "Position": "0,-70.4807587,0",
+              "Rotation": "0,0,0,1",
+              "Scale": "1,1,1",
+              "Tags": "",
+              "Enabled": true,
+              "NetworkMode": 2,
+              "NetworkFlags": 0,
+              "NetworkOrphaned": 0,
+              "NetworkTransmit": true,
+              "OwnerTransfer": 1,
+              "Components": [
+                {
+                  "__type": "Sandbox.ModelRenderer",
+                  "__guid": "6bdec2c2-2fa8-4c47-b2d1-ff75c393a9ca",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "BodyGroups": 18446744073709551615,
+                  "CreateAttachments": false,
+                  "LodOverride": null,
+                  "MaterialGroup": null,
+                  "MaterialOverride": null,
+                  "Materials": null,
+                  "Model": {
+                    "Id": "507cb01f-6973-4c92-800c-8372ced16a7a",
+                    "Path": "pr/gta5_apa_mp_h_acc_plant_tall_01.vmdl"
+                  },
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "RenderOptions": {
+                    "GameLayer": true,
+                    "OverlayLayer": false,
+                    "BloomLayer": false,
+                    "AfterUILayer": false
+                  },
+                  "RenderType": "On",
+                  "Tint": "1,1,1,1"
+                },
+                {
+                  "__type": "Flatpack.FlatpackRenderer",
+                  "__guid": "dedc018b-aea8-4c1c-983d-8f799b25b075",
+                  "__enabled": true,
+                  "Flags": 0,
+                  "CrossFade": false,
+                  "FadeTime": 0.35,
+                  "Hysteresis": 200,
+                  "Impostor": {
+                    "Id": "5a9b77d0-9f76-4d06-8e00-f831440b00ea",
+                    "Path": "flatpack/suite/gta5_apa_mp_h_acc_plant_tall_01.fpack"
+                  },
+                  "Levels": [],
+                  "Mode": "ForceCard",
+                  "OnComponentDestroy": null,
+                  "OnComponentDisabled": null,
+                  "OnComponentEnabled": null,
+                  "OnComponentFixedUpdate": null,
+                  "OnComponentStart": null,
+                  "OnComponentUpdate": null,
+                  "Source": {
+                    "_type": "component",
+                    "component_id": "6bdec2c2-2fa8-4c47-b2d1-ff75c393a9ca",
+                    "go": "406b9c89-a381-4e27-83ee-f1aa241f55e3",
+                    "component_type": "ModelRenderer"
+                  },
+                  "SwapDistance": 2000
+                }
+              ],
+              "Children": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "SceneProperties": {
+    "NetworkInterpolation": true,
+    "PhysicsMode": "Physics3D",
+    "TimeScale": 1,
+    "WantsSystemScene": true,
+    "Metadata": {},
+    "NavMesh": {
+      "Enabled": false,
+      "IncludeStaticBodies": true,
+      "IncludeKeyframedBodies": true,
+      "EditorAutoUpdate": false,
+      "AgentHeight": 64,
+      "AgentRadius": 16,
+      "AgentStepSize": 18,
+      "AgentMaxSlope": 40,
+      "ExcludedBodies": "",
+      "IncludedBodies": "",
+      "DeferGeneration": false,
+      "CustomBounds": false
+    },
+    "GameObjectSystems": {
+      "Sandbox.Clutter.ClutterGridSystem": {
+        "Storage": {
+          "$blob": "64db792e-5935-8fbc-8cfa-050cd49fa7fd",
+          "$refs": []
+        }
+      },
+      "Sandbox.SelectionSetsSystem": {
+        "Data": {
+          "SelectionSets": []
+        }
+      }
+    }
+  },
+  "ResourceVersion": 3,
+  "Title": null,
+  "Description": null,
+  "__references": [
+    "arcaneprops.hospitalbed#143239",
+    "exeros.officechair#103889",
+    "gtavteam.gta5apamphaccplanttall01#97050",
+    "hueycan.scpunityscp173v1#1436",
+    "smallboxstudio.treesmall01#146333"
+  ],
+  "__version": 3
+}

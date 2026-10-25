@@ -1,0 +1,53 @@
+using System.Linq;
+using Editor;
+using Sandbox;
+
+namespace Flatpack.EditorTools;
+
+/// <summary>
+/// Inspector for <see cref="FlatpackRenderer"/>: the usual properties plus a bake button, so giving one model a
+/// Flatpack LOD is "add component, press Bake".
+/// </summary>
+[CustomEditor( typeof( FlatpackRenderer ) )]
+public sealed class FlatpackRendererEditor : ComponentEditorWidget
+{
+	public FlatpackRendererEditor( SerializedObject obj ) : base( obj )
+	{
+		SetSizeMode( SizeMode.Default, SizeMode.Default );
+
+		Layout = Layout.Column();
+
+		var sheet = new ControlSheet();
+		sheet.AddObject( obj );
+		Layout.Add( sheet );
+
+		var renderers = obj.Targets.OfType<FlatpackRenderer>().ToArray();
+		var baked = renderers.All( x => x.Impostor is not null );
+
+		var row = Layout.AddRow();
+		row.Margin = new Sandbox.UI.Margin( 8, 4, 8, 8 );
+		row.Spacing = 4;
+
+		row.Add( new Button( baked ? "Re-bake Impostor" : "Bake Impostor", "view_in_ar" )
+		{
+			ToolTip = "Bake this object's model with the Impostor Baker's current settings and assign the result.",
+			Clicked = () =>
+			{
+				foreach ( var renderer in renderers )
+				{
+					var source = renderer.Source ?? renderer.GameObject.Components.Get<ModelRenderer>();
+					if ( source.IsValid() )
+						FlatpackMenus.BakeAndAttach( source );
+				}
+			}
+		} );
+
+		row.Add( new Button( "Bake Settings", "tune" )
+		{
+			ToolTip = "Open the Impostor Baker window to change grid, atlas size and layout.",
+			Clicked = () => FlatpackBakeWindow.Open()
+		} );
+
+		row.AddStretchCell();
+	}
+}

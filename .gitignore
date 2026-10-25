@@ -32,3 +32,5 @@ Exports/
 .bin/
 *.csproj.user
 Benchmarks/raw/
+*.scene_d
+Assets/flatpack/suite/

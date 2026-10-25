@@ -1,7 +1,7 @@
 {
   "Title": "Flatpack Testbed",
   "Type": "game",
-  "Org": "local",
+  "Org": "anakin",
   "Ident": "flatpack_testbed",
   "Schema": 1,
   "IncludeSourceFiles": false,
@@ -26,6 +26,10 @@
     "PerMapRanking": false,
     "LeaderboardType": "None",
     "CsProjName": "",
-    "StartupScene": "scenes/minimal.scene"
+    "StartupScene": "scenes/minimal.scene",
+    "RecommendedMinPlayers": 0,
+    "RecommendedMaxPlayers": 0,
+    "Coop": false,
+    "Versus": false
   }
 }

@@ -1,0 +1,21 @@
+{
+  "SourceModel": {
+    "Id": "cb95b49a-f88e-456d-8a7f-58518b2ce4fb",
+    "Path": "models/citizen_props/chair01.vmdl"
+  },
+  "Material": {
+    "Id": "bef59262-326a-4002-ae45-0c98e64cde84",
+    "Path": "flatpack/chair01_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 8,
+  "AtlasSize": 2048,
+  "Center": "-0.459888458,0,19.1544724",
+  "Radius": 26.914824,
+  "Bounds": {
+    "Mins": "-15.0542469,-11.6050091,-0.255221009",
+    "Maxs": "14.13447,11.6050091,38.5641632"
+  },
+  "__references": [],
+  "__version": 0
+}

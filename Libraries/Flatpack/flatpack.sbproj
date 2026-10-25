@@ -1,7 +1,17 @@
 {
   "Title": "Flatpack",
   "Type": "library",
-  "Org": "local",
+  "Org": "anakin",
   "Ident": "flatpack",
-  "Schema": 1
+  "Schema": 1,
+  "IncludeSourceFiles": false,
+  "Resources": null,
+  "PackageReferences": [],
+  "EditorReferences": null,
+  "Mounts": null,
+  "IsStandaloneOnly": false,
+  "AI": {
+    "EnableMcpCommunication": true
+  },
+  "Metadata": {}
 }

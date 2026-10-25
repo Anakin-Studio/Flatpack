@@ -1,0 +1,21 @@
+{
+  "SourceModel": {
+    "Id": "86d0eeb7-da66-4596-bae9-89e081879b9d",
+    "Path": "models/citizen_props/crate01.vmdl"
+  },
+  "Material": {
+    "Id": "b09f1b25-2818-433b-bada-42cd592259cd",
+    "Path": "flatpack/crate01_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 8,
+  "AtlasSize": 2048,
+  "Center": "-0.744419098,0.355062485,19.8769512",
+  "Radius": 32.577606,
+  "Bounds": {
+    "Mins": "-19.2542381,-17.8846245,0.230043411",
+    "Maxs": "17.7654018,18.5947495,39.5238609"
+  },
+  "__references": [],
+  "__version": 0
+}

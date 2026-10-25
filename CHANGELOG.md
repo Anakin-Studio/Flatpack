@@ -5,6 +5,81 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Test suite, benchmark, sharper atlases, one-click setup
+
+- Change:
+  - Sharpness: texture streaming kept impostor atlases at 256 to 512 pixels, because it can't tell how much of the
+    atlas the card shows. `FlatpackSystem` now counts visible cards per impostor and calls `Texture.MarkUsed` on
+    their atlases every frame (`FlatpackImpostor.MarkAtlasesUsed`). The shader takes mip gradients from the
+    pre-parallax UV, and only applies the parallax step where the first lookup lands on the object, which removed
+    floating leaf fragments on foliage.
+  - One model, one click: Flatpack Renderer now finds a baked impostor for its model by itself, picks its swap
+    distance from the object's size by default (`AutoSwapDistance`, 30 bounding radii), and has a "Bake Impostor"
+    button in its inspector that bakes and assigns. The bake window gained "Apply to Scene", which adds a Flatpack
+    Renderer to every object whose model has a bake, as one undo step.
+  - Test suite: `scenes/flatpack_suite.scene` puts five high-poly props from Orion SCP-RP (installed from sbox.game,
+    nothing copied from the Orion repo) beside their cards: hospital bed (974,642 triangles), small tree (263,066),
+    office chair (15,378), SCP-173 (6,630), tall plant (1,832). `scenes/flatpack_benchmark.scene` holds the grid
+    benchmark; results in `Benchmarks/2026-10-24_phase2.md`. Turntable GIFs went to `Benchmarks/raw/media/`.
+  - The bed, chair and statue packages have no licence set on sbox.game, so `.gitignore` keeps their bakes
+    (`Assets/flatpack/suite/`) and the GIFs out of the repo until we check rights.
+  - Kept the user's own edits from publishing the testbed: `flatpack_testbed.sbproj` Org `anakin` plus the
+    RecommendedMin/MaxPlayers, Coop and Versus keys, and `Libraries/Flatpack/flatpack.sbproj` Org `anakin` with
+    the editor's default keys.
+- Files: `Libraries/Flatpack/Code/FlatpackRenderer.cs`, `FlatpackImpostor.cs`, `FlatpackSystem.cs`;
+  `Libraries/Flatpack/Editor/FlatpackRendererEditor.cs`, `FlatpackBakeWindow.cs`;
+  `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader`; `Assets/scenes/flatpack_suite.scene`,
+  `Assets/scenes/flatpack_benchmark.scene`; `Benchmarks/2026-10-24_phase2.md`; `.gitignore`;
+  `flatpack_testbed.sbproj`, `Libraries/Flatpack/flatpack.sbproj`
+- Testing: editor. Compiles with 0 errors and 0 warnings. After the fix the atlases read back at 2048 on the GPU.
+  Adding a Flatpack Renderer to an office chair found `office_chair.fpack` and chose 1,116 units with no setup. The
+  inspector resolves to `FlatpackRendererEditor`. Benchmark: 100 hospital beds go from 47.1 ms GPU to 1.5 ms; full
+  table in the benchmark file. Not clicked by hand: the inspector buttons and "Apply to Scene" (code paths only).
+
+## 2026-10-24: Phase 2, impostor baker, shader and runtime
+
+- Change: Flatpack now bakes a model into an impostor and draws it.
+  - Baker (`FlatpackBaker`): renders the model alone in a throwaway editor scene with an orthographic camera, one
+    frame per cell of an N x N grid (hemisphere, full sphere or cylinder layout). It reads albedo, world normals,
+    roughness and AO through the camera debug views, which write material data with no lighting or tonemapping.
+    We checked the byte encoding of each view against known colours first. s&box has no depth view, so a bake-only
+    shader writes linear depth as albedo. The baker grows colour past each silhouette inside its frame (edge
+    padding), then writes `<name>_fp_albedo.png`, `<name>_fp_normal.png` (normal plus depth in alpha),
+    `<name>_fp_rao.png`, `<name>_fp.vmat` and `<name>.fpack`. It yields between frames and takes a cancellation token.
+  - Bake window (Editor menu, Flatpack, Impostor Baker): model list, settings (grid 4 to 16, atlas 512 to 4096,
+    layout, Z-locked card, roughness/AO pass, edge padding, output folder), progress bar, cancel, "Add Selected".
+    Settings persist in an editor cookie. Right-click a model in the asset browser for "Bake Flatpack Impostor".
+    Right-click an object in the scene view to bake its model and add a Flatpack Renderer with the result.
+  - Shader (`flatpack_impostor.shader`): the vertex shader turns a quad into a card on the front of the bounding
+    sphere, facing the camera or locked to the object's Z axis. The pixel shader blends the three nearest frames
+    with barycentric weights, takes one depth parallax step per frame, rebuilds the surface point, writes it as
+    `SV_Depth`, rotates the baked object-space normals by the instance transform and shades through
+    `ShadingModelStandard`. Forward and Depth modes, so it casts and receives shadows. Options: alpha clip,
+    parallax strength, nearest-frame-only, metalness, depth-pass bias, dither fade input, a UV/weights debug view.
+  - Runtime: `FlatpackImpostor` (`.fpack` GameResource) holds bounds, pivot, grid, layout and material, and builds
+    one shared card model. `FlatpackRenderer` swaps the real model and the card at `SwapDistance` with a
+    hysteresis band and an optional dither cross-fade. Optional `Levels` swap the source renderer's model through
+    a mesh LOD chain before the card. With no ModelRenderer the card shows at every distance. `FlatpackSystem`
+    runs one time-sliced distance pass per frame for every renderer in the scene.
+  - Bugs found and fixed in the editor: `SV_Depth` needs the viewport depth range remap (`g_flViewportMinZ/MaxZ`),
+    and the shader must declare `BoolAttribute( alphatest, true )`, or the shadow pass skips the pixel shader and
+    draws the whole quad.
+  - Removed the template placeholders (`MyLibraryComponent.cs`, `MyEditorMenu.cs`, `library_material.vmat`,
+    `LibraryTest.cs`). Added `FlatpackMathTests` for the frame layout maths.
+  - Testbed: `scenes/flatpack_test.scene` (sun, ground, a real chair beside a Flatpack chair) and test bakes of
+    `chair01` and `crate01` in `Assets/flatpack/`. `.gitignore` now skips `*.scene_d`.
+- Files: `Libraries/Flatpack/Code/FlatpackMath.cs`, `FlatpackImpostor.cs`, `FlatpackCard.cs`, `FlatpackRenderer.cs`,
+  `FlatpackSystem.cs`; `Libraries/Flatpack/Editor/FlatpackBaker.cs`, `FlatpackBakeSettings.cs`,
+  `FlatpackBakeWindow.cs`, `FlatpackMenus.cs`; `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader`,
+  `flatpack_bake_depth.shader`; `Libraries/Flatpack/UnitTests/FlatpackMathTests.cs`;
+  `Assets/scenes/flatpack_test.scene`; `Assets/flatpack/*`; `.gitignore`
+- Testing: editor. Both shaders and both assemblies compile with 0 errors and 0 warnings. Baking `chair01` takes
+  0.8 s at 1024. The bake window baked `chair01` and `crate01` in one batch. In `flatpack_test.scene` the card matches
+  the model's silhouette, lighting and cast shadow from the side, above and at 700 units. Play mode confirmed the
+  swap points: LOD1 at 250 going out and 150 coming back, the card at 450 and 350, the source hidden after a
+  0.3 s fade. `dotnet test` passes 6 of 6. Not exercised by hand: clicking the menu items and buttons
+  (scripted calls only), the cylinder and sphere layouts, Z-locked cards, 4096 atlases.
+
 ## 2026-10-24: Library created
 
 - Change: created the Flatpack library at `Libraries/Flatpack/` (title "Flatpack", ident
