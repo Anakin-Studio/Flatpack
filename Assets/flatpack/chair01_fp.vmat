@@ -10,4 +10,6 @@ Layer0
 	g_vFlatpackCenter "[-1.764627 2.629332 17.549300]"
 	g_flFlatpackRadius "25.279460"
 	g_flFlatpackZLocked "0.000000"
+	g_vFlatpackMipAlpha0 "[1.000000 1.000000 1.000000 1.137124]"
+	g_vFlatpackMipAlpha1 "[1.138026 1.247677 1.726657 2.115955]"
 }

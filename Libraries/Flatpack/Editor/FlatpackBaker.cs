@@ -107,6 +107,7 @@ public static class FlatpackBaker
 		await Task.Delay( 1 );
 
 		DilateIntoFrames( albedo, normalDepth, rao, atlas, cell, settings.EdgePadding );
+		var mipAlphaScales = MipAlphaScales( albedo, atlas );
 
 		cancel.ThrowIfCancellationRequested();
 		progress?.Invoke( 0.9f, "Writing files" );
@@ -123,7 +124,7 @@ public static class FlatpackBaker
 		var materialFile = Path.Combine( folder, $"{name}_fp.vmat" );
 		File.WriteAllText( materialFile, BuildMaterial(
 			Relative( assetsRoot, albedoFile ), Relative( assetsRoot, normalFile ), raoFile is null ? null : Relative( assetsRoot, raoFile ),
-			n, layout, center, radius, zLocked ) );
+			n, layout, center, radius, zLocked, mipAlphaScales ) );
 		files.Add( materialFile );
 
 		progress?.Invoke( 0.95f, "Compiling material" );
@@ -487,7 +488,61 @@ public static class FlatpackBaker
 		return path;
 	}
 
-	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked )
+	/// <summary>
+	/// Per-mip alpha multipliers that keep the share of covered texels the same as at full resolution.
+	/// </summary>
+	/// <remarks>
+	/// Mipmaps average a thin part's alpha with the empty space around it. Past a mip or two, spindles, wires and leaf
+	/// tips fall below the 0.5 clip and the card loses them (or they sparkle). For each mip level we find the alpha
+	/// that the same share of texels exceeds as were above 0.5 at full size, and store the factor that lifts it back to
+	/// 0.5. A fixed boost instead over-fills foliage and fences into solid blobs. Mips are approximated with a 2x2 box
+	/// filter, as the texture compiler builds them.
+	/// </remarks>
+	static float[] MipAlphaScales( Color32[] albedo, int size )
+	{
+		const int levels = 8;
+		var scales = new float[levels];
+		var alpha = new float[albedo.Length];
+		var covered = 0;
+		for ( var i = 0; i < albedo.Length; i++ )
+		{
+			alpha[i] = albedo[i].a / 255.0f;
+			if ( alpha[i] > 0.5f ) covered++;
+		}
+
+		var share = covered / (float)albedo.Length;
+		var w = size;
+		var h = size;
+
+		for ( var level = 0; level < levels; level++ )
+		{
+			var nw = Math.Max( 1, w / 2 );
+			var nh = Math.Max( 1, h / 2 );
+			var next = new float[nw * nh];
+			for ( var y = 0; y < nh; y++ )
+			{
+				for ( var x = 0; x < nw; x++ )
+				{
+					var x0 = Math.Min( x * 2, w - 1 ); var x1 = Math.Min( x * 2 + 1, w - 1 );
+					var y0 = Math.Min( y * 2, h - 1 ); var y1 = Math.Min( y * 2 + 1, h - 1 );
+					next[y * nw + x] = (alpha[y0 * w + x0] + alpha[y0 * w + x1] + alpha[y1 * w + x0] + alpha[y1 * w + x1]) * 0.25f;
+				}
+			}
+
+			alpha = next; w = nw; h = nh;
+
+			// The alpha value with `share` of this mip's texels above it.
+			var sorted = (float[])alpha.Clone();
+			Array.Sort( sorted );
+			var index = Math.Clamp( (int)((1.0f - share) * sorted.Length), 0, sorted.Length - 1 );
+			var threshold = sorted[index];
+			scales[level] = threshold > 0.01f ? Math.Clamp( 0.5f / threshold, 1.0f, 4.0f ) : 1.0f;
+		}
+
+		return scales;
+	}
+
+	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales )
 	{
 		string F( float v ) => v.ToString( "0.000000", CultureInfo.InvariantCulture );
 
@@ -505,6 +560,8 @@ public static class FlatpackBaker
 		sb.AppendLine( $"\tg_vFlatpackCenter \"[{F( center.x )} {F( center.y )} {F( center.z )}]\"" );
 		sb.AppendLine( $"\tg_flFlatpackRadius \"{F( radius )}\"" );
 		sb.AppendLine( $"\tg_flFlatpackZLocked \"{F( zLocked ? 1 : 0 )}\"" );
+		sb.AppendLine( $"\tg_vFlatpackMipAlpha0 \"[{F( mipAlphaScales[0] )} {F( mipAlphaScales[1] )} {F( mipAlphaScales[2] )} {F( mipAlphaScales[3] )}]\"" );
+		sb.AppendLine( $"\tg_vFlatpackMipAlpha1 \"[{F( mipAlphaScales[4] )} {F( mipAlphaScales[5] )} {F( mipAlphaScales[6] )} {F( mipAlphaScales[7] )}]\"" );
 		sb.AppendLine( "}" );
 		return sb.ToString();
 	}

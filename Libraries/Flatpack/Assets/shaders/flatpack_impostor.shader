@@ -240,10 +240,27 @@ VS
 		float3 right = normalize( cross( -fwd, up ) );
 		up = cross( right, -fwd );
 
-		// Put the card on the front face of the bounding sphere. A card there with half-size r always covers
-		// the sphere's perspective silhouette, and it sits in front of the surface the pixel shader rebuilds.
+		// Put the card on the front face of the bounding sphere, where it sits in front of every surface the pixel
+		// shader rebuilds. Up close that plane can come nearer than the camera's near plane and get clipped away, so it
+		// backs off toward the centre, never closer than twice the near distance.
+		float offset = radiusWs;
+		float halfSize = radiusWs;
+		if ( !ortho )
+		{
+			float dist = length( g_vCameraPositionWs - centerWs );
+			offset = min( radiusWs, dist - g_flNearPlane * 2.0 );
+
+			// Size the card to the sphere's silhouette cone at that plane: half-angle asin(r / d), so the half-size is
+			// the plane's distance times r / sqrt(d^2 - r^2). Z-locked cards tilt away from the view, so they never go
+			// below r.
+			float tanHalf = radiusWs * rsqrt( max( dist * dist - radiusWs * radiusWs, radiusWs * radiusWs * 0.01 ) );
+			halfSize = ( dist - offset ) * tanHalf;
+			if ( zLocked )
+				halfSize = max( halfSize, radiusWs );
+		}
+
 		float2 corner = i.vTexCoord.xy * 2.0 - 1.0;
-		float3 posWs = centerWs + fwd * radiusWs + ( right * corner.x - up * corner.y ) * radiusWs;
+		float3 posWs = centerWs + fwd * offset + ( right * corner.x - up * corner.y ) * halfSize;
 
 		o.vPositionWs = posWs;
 		o.vPositionPs = Position3WsToPs( posWs );
@@ -303,6 +320,20 @@ PS
 	SamplerState g_sFlatpackPoint < Filter( POINT ); AddressU( CLAMP ); AddressV( CLAMP ); >;
 
 	float g_flFlatpackAlphaClip < Default( 0.5 ); Range( 0.01, 0.99 ); UiGroup( "Flatpack,10/60" ); >;
+
+	// Alpha multipliers for mip levels 1 to 8, measured by the baker so thin parts keep their coverage as the card
+	// shrinks on screen (see FlatpackBaker.MipAlphaScales). 1 means no correction.
+	float4 g_vFlatpackMipAlpha0 < Default4( 1.0, 1.0, 1.0, 1.0 ); UiGroup( "Flatpack,10/62" ); >;
+	float4 g_vFlatpackMipAlpha1 < Default4( 1.0, 1.0, 1.0, 1.0 ); UiGroup( "Flatpack,10/63" ); >;
+
+	float FlatpackMipAlphaScale( float lod )
+	{
+		float scales[9] = { 1.0, g_vFlatpackMipAlpha0.x, g_vFlatpackMipAlpha0.y, g_vFlatpackMipAlpha0.z, g_vFlatpackMipAlpha0.w,
+			g_vFlatpackMipAlpha1.x, g_vFlatpackMipAlpha1.y, g_vFlatpackMipAlpha1.z, g_vFlatpackMipAlpha1.w };
+		float l = clamp( lod, 0.0, 7.999 );
+		int i = (int)floor( l );
+		return lerp( scales[i], scales[i + 1], l - i );
+	}
 	float g_flFlatpackMetalness < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/80" ); >;
 
 	// Depth search steps per frame. 0 projects onto the bounds' centre plane (cheapest, ghosts badly); 8 to 16 lines the
@@ -317,6 +348,10 @@ PS
 	// as much for direct light. 0 matches the real model, which gets no such occlusion in-engine; raise it for dense
 	// foliage that should keep a dark interior at a distance.
 	float g_flFlatpackSkyOcclusion < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/77" ); >;
+
+	// 1: a ray that finds no surface in a view samples that view at the bounds' centre plane instead of skipping it.
+	// Keeps very thin parts that the search steps over, at the cost of some ghosting.
+	float g_flFlatpackMissFallback < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/74" ); >;
 
 	// Blend weight exponent. 1 is plain barycentric blending (widest, softest crossfade); higher values hold each frame
 	// alone for longer and crossfade over a narrower band, so less of the turn shows two frames at once.
@@ -371,16 +406,11 @@ PS
 
 	// Height of the ray above the baked surface at one point of a frame (negative once the ray is behind it). Outside the
 	// frame there is nothing, which reads as the far plane.
-	float FlatpackDepthGap( float2 frame, float2 uv, float rayHeight, float n, float rad, bool filtered )
+	float FlatpackDepthGap( float2 frame, float2 uv, float rayHeight, float n, float rad, float lod )
 	{
 		float depth01 = 1.0;
 		if ( all( uv >= 0.0 ) && all( uv <= 1.0 ) )
-		{
-			float2 atlasUv = ( frame + uv ) / n;
-			depth01 = filtered
-				? g_tFlatpackNormalDepth.SampleLevel( g_sFlatpack, atlasUv, 0 ).a
-				: g_tFlatpackNormalDepth.SampleLevel( g_sFlatpackPoint, atlasUv, 0 ).a;
-		}
+			depth01 = g_tFlatpackNormalDepth.SampleLevel( g_sFlatpackPoint, ( frame + uv ) / n, lod ).a;
 
 		return rayHeight - ( 1.0 - 2.0 * depth01 ) * rad;
 	}
@@ -421,6 +451,10 @@ PS
 		// Fewer steps as the card gets smaller on screen: each mip level halves the texels a pixel covers, and with them
 		// the depth detail the search can resolve. Never below 4, so distant cards still line their frames up.
 		int steps = (int)g_flFlatpackSearchSteps;
+
+		// Search the depth mip that matches the pixel's footprint. Full-resolution depth on a small card turns every
+		// pixel into a lottery between neighbouring texels, which sparkles as the camera moves.
+		float depthLod = floor( lod );
 		if ( steps > 0 )
 			steps = max( min( 4, steps ), (int)( steps / exp2( floor( lod ) ) ) );
 
@@ -444,7 +478,7 @@ PS
 			for ( int k = 1; k <= steps; k++ )
 			{
 				float t = lerp( tFront, tBack, (float)k / steps );
-				float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, heightP + denom * t, n, rad, false );
+				float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, heightP + denom * t, n, rad, depthLod );
 				if ( gap <= 0.0 && gap >= -thickness )
 				{
 					hit = true;
@@ -464,7 +498,7 @@ PS
 				for ( int b = 0; b < 4; b++ )
 				{
 					float tm = ( tIn + tOut ) * 0.5;
-					float gm = FlatpackDepthGap( frame, uvP + uvPerT * tm, heightP + denom * tm, n, rad, false );
+					float gm = FlatpackDepthGap( frame, uvP + uvPerT * tm, heightP + denom * tm, n, rad, depthLod );
 					if ( gm <= 0.0 && gm >= -thickness )
 						tOut = tm;
 					else
@@ -474,8 +508,14 @@ PS
 			}
 		}
 
+		// A miss usually means a part thinner than one search step (twigs, wires): the ray stepped over it. Fall back to
+		// where the ray crosses the centre plane, which still lands on thin parts near the middle of the object.
 		if ( !hit )
-			return;
+		{
+			if ( g_flFlatpackMissFallback < 0.5 )
+				return;
+			tHit = -heightP / denom;
+		}
 
 		float2 uvHit = uvP + uvPerT * tHit;
 		if ( any( uvHit < 0.0 ) || any( uvHit > 1.0 ) )
@@ -530,12 +570,17 @@ PS
 
 		// Coverage. The forward pass turns it into a soft edge for alpha-to-coverage (one pixel wide, from the screen
 		// derivative); the depth pass needs a hard cut.
-		float coverage = s.Alpha;
+		// Mipmaps average a thin part's alpha with the empty space around it, so spindles, wires and leaves fall below
+		// the clip and vanish (or sparkle) as the card gets smaller. The baker measured how far each mip falls short;
+		// undoing exactly that keeps coverage constant without filling in the gaps of foliage.
+		float alpha = s.Alpha * FlatpackMipAlphaScale( lod );
+
+		float coverage = alpha;
 		#if ( S_MODE_DEPTH == 0 )
-			coverage = saturate( ( s.Alpha - g_flFlatpackAlphaClip ) / max( fwidth( s.Alpha ), 1e-4 ) + 0.5 );
+			coverage = saturate( ( alpha - g_flFlatpackAlphaClip ) / max( fwidth( alpha ), 1e-4 ) + 0.5 );
 			clip( coverage - 1.0 / 255.0 );
 		#else
-			clip( s.Alpha - g_flFlatpackAlphaClip );
+			clip( alpha - g_flFlatpackAlphaClip );
 		#endif
 
 		float inv = 1.0 / max( s.Alpha, 1e-4 );

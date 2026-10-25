@@ -1,12 +1,10 @@
-# Phase 2 benchmark: real models vs Flatpack cards
+# Iteration 2: stable shader
 
 Date: 2026-10-24. Engine 26.10.13b. RTX 3090, Ryzen 9 9950X. Editor play mode, `scenes/flatpack_benchmark.scene`
-(one shadowed sun, sky, envmap, ground plane). Raw numbers: `Benchmarks/raw/2026-10-24_phase2b_bench.jsonl` (kept out
-of git with the rest of `Benchmarks/raw/`).
+(one shadowed sun, sky, envmap, ground plane). Commit `1774408`. Raw numbers: `data/bench.jsonl`.
 
 Shader version: per-frame depth search (16 steps up close, fewer as the card shrinks on screen), 12 x 12 hemisphere
-views, 2048 atlases. An earlier run of the first shader (single parallax step, 8 x 8 views) is in the git history of
-this file.
+views, 2048 atlases. The first shader's numbers are in [iteration 1](../iteration-1-first-shader/README.md).
 
 ## Method
 
@@ -70,3 +68,10 @@ doesn't); "difference" is the mean absolute pixel difference between card and mo
 With the first shader the office chair's difference was 7.02, with visible double images while turning. A grid that
 didn't divide the atlas evenly (2048 / 12) pushed it to 13.1 until the baker started sizing atlases to a whole number of
 frames.
+
+## Media
+
+The README hero (`docs/media/flatpack_hero.png`) and turntable (`docs/media/flatpack_turntable.gif`) come from this
+iteration, along with everything in `marketing/`.
+
+What changed next: [iteration 3](../iteration-3-ten-models/README.md).

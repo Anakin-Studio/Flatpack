@@ -5,6 +5,28 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Ten-model test, close-range and thin-part fixes, Benchmarks by iteration
+
+- Change:
+  - Tested ten public sbox.game models (trees, fern, statues, chair, fence, car, cactus, rock) with a harness that
+    scores a camera orbit and a 1.5 to 30 radii distance ladder against the real model at its top LOD.
+  - Card placement: up close the card backs off from the near plane and is sized to the bounding sphere's silhouette.
+    Before, it was clipped away below about 2 radii (rock at 1.5 radii: 95% of pixels wrong, now 5%).
+  - Thin parts at range: the baker measures how much each mip level loses coverage and writes per-mip alpha
+    corrections (`g_vFlatpackMipAlpha0/1`) into the material; the shader applies them. The depth search reads the mip
+    matching the pixel's footprint, so small cards stop sparkling.
+  - New material option Miss Fallback (off by default): tested on, it raised errors on every model but the weed tree.
+  - Benchmarks reorganised into one folder per iteration (`Benchmarks/iteration-1-first-shader`,
+    `iteration-2-stable-shader`, `iteration-3-ten-models`), each with a README, `data/` and `media/`. Renders of
+    unlicensed models moved to git-ignored `local/` folders; `Benchmarks/raw/` is gone.
+  - README: ten-model comparison grid, before/after flicker GIF and chart, and a "how close can you get" table.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`;
+  `Assets/flatpack/*` (re-baked); `Benchmarks/**`; `README.md`; `.gitignore`
+- Testing: editor. Ten models plus Tree_small_01 measured before and after (`data/eval_round1.jsonl`,
+  `data/eval_final.jsonl`): equal or better at every distance except the fence past 12 radii. Before/after orbit with
+  the iteration 1 shader on its own 8 x 8 bake: wooden chair difference from the model 8.51 to 3.88, frame-to-frame jump
+  9.55 to 5.33. The fence and the weed tree's twigs remain weak (documented).
+
 ## 2026-10-24: Marketing kit for the sbox.game page
 
 - Change: `marketing/` holds what the package page needs: a 1024 x 1024 thumbnail (tree beside its card, "263,066

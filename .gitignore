@@ -31,6 +31,8 @@ Exports/
 # Flatpack additions
 .bin/
 *.csproj.user
-Benchmarks/raw/
+Benchmarks/*/local/
 *.scene_d
 Assets/flatpack/suite/
+Assets/flatpack/gallery/
+Assets/shaders/flatpack_impostor_v1.*

@@ -31,7 +31,39 @@ nearest yours, traces into their baked depth so they line up, and blends them as
 
 The empty scene costs 1.30 ms. Cards cost about the same whatever they replace, so the saving grows with the source's
 triangle count. Below a couple of thousand triangles, or when a model already ends in a cheap billboard LOD, a card
-won't beat it. Method and raw numbers: [`Benchmarks/2026-10-24_phase2.md`](Benchmarks/2026-10-24_phase2.md).
+won't beat it. Method and raw numbers: [`Benchmarks/`](Benchmarks/README.md).
+
+## Ten models, side by side
+
+![Ten models beside their Flatpack cards](Benchmarks/iteration-3-ten-models/media/comparison_grid.png)
+
+Real model on the left of each pair, the card on the right, at 4 bounding radii on a 1080p screen. All ten are
+public models from sbox.game (credits in [iteration 3](Benchmarks/iteration-3-ten-models/README.md#models)).
+
+### Steady while you move
+
+The camera circles a chair: real model, Flatpack's first shader, and the current one.
+
+![Real model, first shader and current card while the camera circles](Benchmarks/iteration-3-ten-models/media/flicker_orbit_chair.gif)
+![Difference from the real model at every step of the orbit](Benchmarks/iteration-3-ten-models/media/flicker_chart_chair.png)
+
+Across the full circle the current card stays 3.9 away from the real model on average (the first shader: 8.5), and
+that difference changes about half as much from one step to the next, which is what you see as flicker.
+
+### How close can you get?
+
+![The knight from 1.5 to 24 bounding radii](Benchmarks/iteration-3-ten-models/media/distance_knight.png)
+
+| Kind of model | Card holds up from | On a 1080p screen |
+|---|---|---|
+| Solid shapes: rocks, cacti, statues | 1.5 to 4 bounding radii | 220 to 760 px tall |
+| Vehicles and props | about 3 radii | about 300 px tall |
+| Trees and ferns | 6 to 8 radii | 130 to 160 px tall |
+| Thin spindles, twigs | about 16 radii | about 60 px tall |
+| Fine wire mesh (fences) | doesn't hold up well; keep as a real model | |
+
+The default swap happens at 30 radii, well past all of these. Full per-model numbers:
+[`Benchmarks/iteration-3-ten-models`](Benchmarks/iteration-3-ten-models/README.md).
 
 ## Install
 
@@ -96,8 +128,10 @@ quad's position and size and builds the card from the bake data and the instance
 | Output Folder | next to the model | Relative to `Assets`. |
 
 The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, default
-16), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness**, **Shadow Bias** and **Sky Occlusion** (darkens
-enclosed parts using the self-shadow bake, for dense foliage).
+16), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness**, **Shadow Bias**, **Miss Fallback** (keeps
+some sub-step twigs at the cost of ghosting, off by default) and **Sky Occlusion** (darkens enclosed parts using the
+self-shadow bake, for dense foliage). The baker also writes per-mip alpha corrections it measured from the atlas, so
+thin parts keep their coverage as the card shrinks.
 
 ## How it works
 
@@ -120,7 +154,9 @@ surface depth, and shades the result with the standard s&box lighting, shadows a
   objects the camera gets near.
 - Hemisphere bakes can't show an object from below. Use Sphere for those.
 - Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting.
-- Very thin parts (wheels, wires) can lose pixels when the three views disagree about them.
+- Very thin parts (twigs, spindles, wires) thinner than one texel can't survive the bake, and a fine wire mesh fills
+  in to a solid panel at a distance. Keep fences as real models.
+- Below about 2 bounding radii the card stops matching the model. Swap well before that (the default is 30).
 
 ## This repository
 
@@ -139,4 +175,5 @@ published.
 Flatpack by [Anakin Studio](https://github.com/Anakin-Studio), MIT licence.
 
 Tree_small_01 in the images by Small Box Studio
-([sbox.game/smallboxstudio/treesmall01](https://sbox.game/smallboxstudio/treesmall01)), CC BY 4.0.
+([sbox.game/smallboxstudio/treesmall01](https://sbox.game/smallboxstudio/treesmall01)), CC BY 4.0. The ten comparison
+models and their creators are listed in [iteration 3](Benchmarks/iteration-3-ten-models/README.md#models).
