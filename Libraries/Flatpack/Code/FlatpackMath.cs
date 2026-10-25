@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Sandbox;
 
 namespace Flatpack;
@@ -131,6 +132,55 @@ public static class FlatpackMath
 	public static (Vector3 Center, float Radius) BoundingSphere( BBox bounds )
 	{
 		return (bounds.Center, MathF.Max( bounds.Size.Length * 0.5f, 0.01f ));
+	}
+
+	/// <summary>
+	/// A bounding sphere fitted to points (Ritter's method): pick two far-apart points, then grow the sphere for any point
+	/// left outside. Within a few percent of the minimal sphere and never smaller than needed.
+	/// </summary>
+	public static (Vector3 Center, float Radius) BoundingSphere( IReadOnlyList<Vector3> points )
+	{
+		if ( points is null || points.Count == 0 )
+			return (Vector3.Zero, 0.01f);
+
+		var a = points[0];
+		var b = Farthest( points, a );
+		var c = Farthest( points, b );
+
+		var center = (b + c) * 0.5f;
+		var radius = b.Distance( c ) * 0.5f;
+
+		foreach ( var p in points )
+		{
+			var d = p.Distance( center );
+			if ( d <= radius )
+				continue;
+
+			// Move the centre toward p just enough that the new sphere still touches the old one's far side.
+			var newRadius = (radius + d) * 0.5f;
+			center += (p - center) * ((newRadius - radius) / d);
+			radius = newRadius;
+		}
+
+		// A hair of slack so silhouette texels on the sphere's rim aren't clipped by the frame edge.
+		return (center, MathF.Max( radius * 1.01f, 0.01f ));
+	}
+
+	static Vector3 Farthest( IReadOnlyList<Vector3> points, Vector3 from )
+	{
+		var best = from;
+		var bestDistance = -1.0f;
+		foreach ( var p in points )
+		{
+			var d = p.DistanceSquared( from );
+			if ( d > bestDistance )
+			{
+				bestDistance = d;
+				best = p;
+			}
+		}
+
+		return best;
 	}
 
 	static float Sign( float v ) => v >= 0.0f ? 1.0f : -1.0f;

@@ -88,4 +88,23 @@ public class FlatpackMathTests
 			Assert.AreEqual( 0.0f, up.Dot( d ), Epsilon );
 		}
 	}
+
+	[TestMethod]
+	public void BoundingSphereContainsEveryPoint()
+	{
+		// The baker frames each view on this sphere; a point outside it would be cut off at the frame edge.
+		var random = new System.Random( 1234 );
+		var points = new Vector3[500];
+		for ( var i = 0; i < points.Length; i++ )
+			points[i] = new Vector3( random.Next( -100, 300 ), random.Next( -50, 50 ), random.Next( 0, 400 ) );
+
+		var (center, radius) = FlatpackMath.BoundingSphere( points );
+
+		foreach ( var p in points )
+			Assert.IsTrue( p.Distance( center ) <= radius + Epsilon, $"{p} is outside the sphere" );
+
+		// Ritter's sphere is close to minimal; the box half-diagonal it replaced was much looser.
+		var box = BBox.FromPoints( points );
+		Assert.IsTrue( radius < box.Size.Length * 0.5f );
+	}
 }

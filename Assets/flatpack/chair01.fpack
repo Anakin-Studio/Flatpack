@@ -8,10 +8,10 @@
     "Path": "flatpack/chair01_fp.vmat"
   },
   "Layout": "Hemisphere",
-  "GridSize": 8,
-  "AtlasSize": 2048,
-  "Center": "-0.459888458,0,19.1544724",
-  "Radius": 26.914824,
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "-1.76462674,2.62933183,17.5492992",
+  "Radius": 25.279455,
   "Bounds": {
     "Mins": "-15.0542469,-11.6050091,-0.255221009",
     "Maxs": "14.13447,11.6050091,38.5641632"

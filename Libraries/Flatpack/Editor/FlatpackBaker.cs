@@ -72,15 +72,25 @@ public static class FlatpackBaker
 
 		var timer = Stopwatch.StartNew();
 		var n = Math.Clamp( settings.GridSize, 2, 32 );
-		var atlas = (int)settings.AtlasSize;
-		var cell = atlas / n;
+		// The shader addresses frame (x, y) at (x + u) / n of the atlas, so the atlas must be exactly n frames wide.
+		// 2048 / 12 isn't whole; round the frame down (to keep the atlas a multiple of 4 for block compression) and
+		// shrink the atlas to fit, rather than let the frames drift out of place across the atlas.
+		var cell = (int)settings.AtlasSize / n;
+		while ( (cell * n) % 4 != 0 )
+			cell--;
+		var atlas = cell * n;
 		var layout = settings.Layout;
 
 		var bounds = model.RenderBounds;
 		if ( bounds.Size.Length < 0.001f )
 			bounds = model.Bounds;
 
-		var (center, radius) = FlatpackMath.BoundingSphere( bounds );
+		// A sphere fitted to the vertices is usually much smaller than the box's half diagonal, so the object fills more
+		// of every frame. Fall back to the box for models without readable vertices.
+		var vertices = model.GetVertices();
+		var (center, radius) = vertices is { Length: > 0 }
+			? FlatpackMath.BoundingSphere( vertices.Select( v => v.Position ).ToArray() )
+			: FlatpackMath.BoundingSphere( bounds );
 
 		var (folder, assetsRoot) = ResolveOutputFolder( model, settings );
 		var name = SafeName( model );
@@ -90,7 +100,7 @@ public static class FlatpackBaker
 		var rao = settings.BakeRoughnessAo ? new Color32[atlas * atlas] : null;
 
 		progress?.Invoke( 0.0f, $"Baking {name}" );
-		await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, progress, cancel );
+		await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, progress, cancel );
 
 		cancel.ThrowIfCancellationRequested();
 		progress?.Invoke( 0.85f, "Padding edges" );
@@ -169,9 +179,10 @@ public static class FlatpackBaker
 	/// Render every frame and copy it into the CPU atlases.
 	/// </summary>
 	static async Task CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius,
-		Color32[] albedo, Color32[] normalDepth, Color32[] rao, Action<float, string> progress, CancellationToken cancel )
+		Color32[] albedo, Color32[] normalDepth, Color32[] rao, bool selfShadow, Action<float, string> progress, CancellationToken cancel )
 	{
 		var depthMaterial = Material.Create( "flatpack_bake_depth", DepthShader, true );
+		selfShadow &= rao is not null;
 
 		var scene = Scene.CreateEditorScene();
 		scene.Name = "Flatpack Bake";
@@ -180,6 +191,7 @@ public static class FlatpackBaker
 		{
 			ModelRenderer renderer;
 			CameraComponent camera;
+			DirectionalLight sun = null;
 
 			using ( scene.Push() )
 			{
@@ -200,6 +212,14 @@ public static class FlatpackBaker
 				camera.OrthographicHeight = radius * 2.0f;
 				camera.ZNear = radius;
 				camera.ZFar = radius * 3.0f;
+
+				if ( selfShadow )
+				{
+					var light = new GameObject( true, "sky light" );
+					sun = light.Components.Create<DirectionalLight>();
+					sun.LightColor = Color.White;
+					sun.Shadows = true;
+				}
 			}
 
 			var frame = new Bitmap( cell, cell, false );
@@ -215,6 +235,7 @@ public static class FlatpackBaker
 					var dir = FlatpackMath.FrameDirection( x, y, n, layout );
 
 					Color32[] colorPixels, normalPixels, depthPixels, roughPixels = null, aoPixels = null;
+					byte[] visibility = null;
 
 					using ( scene.Push() )
 					{
@@ -231,9 +252,12 @@ public static class FlatpackBaker
 							roughPixels = Capture( camera, renderer, frame, SceneCameraDebugMode.Roughness, null );
 							aoPixels = Capture( camera, renderer, frame, SceneCameraDebugMode.AmbientOcclusion, null );
 						}
+
+						if ( selfShadow )
+							visibility = CaptureSkyVisibility( scene, camera, renderer, sun, frame, normalPixels );
 					}
 
-					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, albedo, normalDepth, rao );
+					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, albedo, normalDepth, rao );
 
 					var done = y * n + x + 1;
 					progress?.Invoke( done / (float)total * 0.85f, $"Frame {done} of {total}" );
@@ -253,6 +277,92 @@ public static class FlatpackBaker
 		}
 	}
 
+	/// <summary>
+	/// Directions the sky-visibility pass lights the model from: one overhead and two rings, spread over the upper
+	/// hemisphere. Fixed in object space, so every frame sees the same shadows and blending between frames stays seamless.
+	/// </summary>
+	static readonly Angles[] SkyLights =
+	{
+		new( 85, 0, 0 ),
+		new( 60, 0, 0 ), new( 60, 120, 0 ), new( 60, 240, 0 ),
+		new( 30, 45, 0 ), new( 30, 135, 0 ), new( 30, 225, 0 ), new( 30, 315, 0 ),
+	};
+
+	/// <summary>
+	/// How much of the sky each texel sees, 0..255: diffuse light with shadows over diffuse light without, both summed over
+	/// <see cref="SkyLights"/>. This is the self-shadowing a dense model (a tree's inner branches) has and a card can't
+	/// work out live; the shader uses it to darken ambient light and part of the albedo.
+	/// </summary>
+	/// <remarks>
+	/// Eight lights average out to soft occlusion; with only a few, a surface facing one light gets that light's hard
+	/// shadow and turns black. Ratios are taken in linear light.
+	/// </remarks>
+	static byte[] CaptureSkyVisibility( Scene scene, CameraComponent camera, ModelRenderer renderer, DirectionalLight sun, Bitmap target, Color32[] normals )
+	{
+		var count = target.Width * target.Height;
+		var lit = new float[count];
+		var open = new float[count];
+
+		foreach ( var angles in SkyLights )
+		{
+			sun.WorldRotation = angles;
+
+			foreach ( var shadowed in new[] { true, false } )
+			{
+				sun.Shadows = shadowed;
+				scene.EditorTick( 0.0f, 0.0f );
+
+				// Render twice: the first render after moving or toggling the light can still use the old shadow map.
+				Capture( camera, renderer, target, SceneCameraDebugMode.Diffuse, null );
+				var pixels = Capture( camera, renderer, target, SceneCameraDebugMode.Diffuse, null );
+
+				var sum = shadowed ? lit : open;
+				for ( var i = 0; i < count; i++ )
+					sum[i] += Linear( pixels[i].r );
+			}
+		}
+
+		// Shadow-map bias and terminator softness keep even fully open texels a little under 1, and that shifts from frame
+		// to frame. Normalise: the well-lit texels of this frame (95th percentile) count as fully visible. Capped, so a
+		// frame that really is mostly in shadow isn't brightened.
+		var ratio = new float[count];
+		var samples = new List<float>( count );
+		var openMax = 0.0f;
+		for ( var i = 0; i < count; i++ )
+			openMax = MathF.Max( openMax, open[i] );
+
+		for ( var i = 0; i < count; i++ )
+		{
+			ratio[i] = open[i] > 0.0f ? Math.Clamp( lit[i] / open[i], 0.0f, 1.0f ) : 1.0f;
+			if ( normals[i].a > 0 && open[i] > openMax * 0.2f )
+				samples.Add( ratio[i] );
+		}
+
+		samples.Sort();
+		var reference = samples.Count > 16 ? samples[(int)(samples.Count * 0.95f)] : 1.0f;
+		reference = Math.Clamp( reference, 0.75f, 1.0f );
+
+		var visibility = new byte[count];
+		for ( var i = 0; i < count; i++ )
+		{
+			// Texels the sky barely reaches (undersides) carry little information; fade them toward fully visible.
+			var known = openMax > 0.0f ? Math.Clamp( open[i] / (openMax * 0.2f), 0.0f, 1.0f ) : 0.0f;
+			var v = Math.Clamp( ratio[i] / reference, 0.0f, 1.0f );
+			visibility[i] = (byte)Math.Clamp( (int)MathF.Round( (v * known + (1.0f - known)) * 255.0f ), 0, 255 );
+		}
+
+		return visibility;
+	}
+
+	/// <summary>
+	/// The diffuse lighting view writes light through an sRGB target; ratios only make sense in linear light.
+	/// </summary>
+	static float Linear( byte value )
+	{
+		var c = value / 255.0f;
+		return c <= 0.04045f ? c / 12.92f : MathF.Pow( (c + 0.055f) / 1.055f, 2.4f );
+	}
+
 	static Color32[] Capture( CameraComponent camera, ModelRenderer renderer, Bitmap target, SceneCameraDebugMode mode, Material overrideMaterial )
 	{
 		camera.DebugMode = mode;
@@ -265,7 +375,7 @@ public static class FlatpackBaker
 	/// Copy one frame's passes into the atlases. Uncovered texels stay fully clear for the dilation pass.
 	/// </summary>
 	static void BlitFrame( int fx, int fy, int cell, int atlas, Color32[] color, Color32[] normal, Color32[] depth, Color32[] rough, Color32[] ao,
-		Color32[] albedoAtlas, Color32[] normalAtlas, Color32[] raoAtlas )
+		byte[] visibility, Color32[] albedoAtlas, Color32[] normalAtlas, Color32[] raoAtlas )
 	{
 		for ( var py = 0; py < cell; py++ )
 		{
@@ -280,7 +390,7 @@ public static class FlatpackBaker
 				if ( c.a == 0 )
 				{
 					albedoAtlas[dst] = default;
-					normalAtlas[dst] = default;
+					normalAtlas[dst] = new Color32( 128, 128, 255, 255 );
 					if ( raoAtlas is not null ) raoAtlas[dst] = default;
 					continue;
 				}
@@ -293,7 +403,7 @@ public static class FlatpackBaker
 				normalAtlas[dst] = new Color32( n.r, n.g, n.b, Math.Max( depth[src].r, (byte)1 ) );
 
 				if ( raoAtlas is not null )
-					raoAtlas[dst] = new Color32( rough[src].r, ao[src].r, 0, 255 );
+					raoAtlas[dst] = new Color32( rough[src].r, ao[src].r, visibility?[src] ?? 255, 255 );
 			}
 		}
 	}
@@ -355,7 +465,11 @@ public static class FlatpackBaker
 
 			var c = albedo[s];
 			albedo[to] = new Color32( c.r, c.g, c.b, 1 );
-			normalDepth[to] = normalDepth[s];
+
+			// Grown texels keep the neighbour's normal but sit at the far plane (depth 255), so the shader's depth search
+			// passes straight through the background instead of stopping on borrowed depth and drawing a ghost.
+			var nd = normalDepth[s];
+			normalDepth[to] = new Color32( nd.r, nd.g, nd.b, 255 );
 			if ( rao is not null ) rao[to] = rao[s];
 		}
 	}

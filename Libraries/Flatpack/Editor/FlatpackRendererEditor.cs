@@ -18,7 +18,8 @@ public sealed class FlatpackRendererEditor : ComponentEditorWidget
 		Layout = Layout.Column();
 
 		var sheet = new ControlSheet();
-		sheet.AddObject( obj );
+		// Only the component's [Property] members; the default sheet hides transform and internals the same way.
+		sheet.AddObject( obj, p => p.HasAttribute<PropertyAttribute>() );
 		Layout.Add( sheet );
 
 		var renderers = obj.Targets.OfType<FlatpackRenderer>().ToArray();

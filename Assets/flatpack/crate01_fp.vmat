@@ -5,9 +5,9 @@ Layer0
 	TextureAlbedo "flatpack/crate01_fp_albedo.png"
 	TextureNormalDepth "flatpack/crate01_fp_normal.png"
 	TextureRoughnessAo "flatpack/crate01_fp_rao.png"
-	g_flFlatpackGrid "8.000000"
+	g_flFlatpackGrid "12.000000"
 	g_flFlatpackMode "0.000000"
-	g_vFlatpackCenter "[-0.744419 0.355063 19.876950]"
-	g_flFlatpackRadius "32.577610"
+	g_vFlatpackCenter "[-1.138277 -0.039527 20.771890]"
+	g_flFlatpackRadius "30.463720"
 	g_flFlatpackZLocked "0.000000"
 }

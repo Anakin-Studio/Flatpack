@@ -19,9 +19,10 @@ public enum FlatpackAtlasSize
 public sealed class FlatpackBakeSettings
 {
 	/// <summary>
-	/// Frames per atlas side. 8 gives 64 views; more views means less blending blur but smaller frames.
+	/// Frames per atlas side. 12 gives 144 views, 15 degrees apart on the hemisphere: close enough that neighbouring
+	/// frames agree and the card turns without visible switching. Fewer views give sharper frames but more ghosting.
 	/// </summary>
-	[Property, Range( 4, 16 ), Step( 1 )] public int GridSize { get; set; } = 8;
+	[Property, Range( 4, 16 ), Step( 1 )] public int GridSize { get; set; } = 12;
 
 	/// <summary>
 	/// Atlas width and height. Each frame gets AtlasSize / GridSize pixels.
@@ -43,6 +44,14 @@ public sealed class FlatpackBakeSettings
 	/// Also bake roughness and ambient occlusion. Without it the impostor uses roughness 1 and no AO.
 	/// </summary>
 	[Property] public bool BakeRoughnessAo { get; set; } = true;
+
+	/// <summary>
+	/// Also bake how much sky each part of the model sees (lit from eight directions, shadowed against unshadowed).
+	/// The impostor material's Sky Occlusion slider then darkens enclosed parts, which helps dense foliage keep its dark
+	/// interior. Off by default: the real model gets no such occlusion in-engine, so the card matches it better without.
+	/// Needs <see cref="BakeRoughnessAo"/>; roughly triples bake time.
+	/// </summary>
+	[Property, ShowIf( nameof( BakeRoughnessAo ), true )] public bool BakeSelfShadow { get; set; }
 
 	/// <summary>
 	/// How many texels to grow colour out past the silhouette, inside each frame, so mipmaps don't pull in

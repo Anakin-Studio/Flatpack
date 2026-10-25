@@ -8,10 +8,10 @@
     "Path": "flatpack/crate01_fp.vmat"
   },
   "Layout": "Hemisphere",
-  "GridSize": 8,
-  "AtlasSize": 2048,
-  "Center": "-0.744419098,0.355062485,19.8769512",
-  "Radius": 32.577606,
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "-1.1382767,-0.0395269878,20.7718925",
+  "Radius": 30.46372,
   "Bounds": {
     "Mins": "-19.2542381,-17.8846245,0.230043411",
     "Maxs": "17.7654018,18.5947495,39.5238609"

@@ -5,6 +5,35 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Stable impostors (flicker and ghosting fixes), README
+
+- Change: the card flickered and showed double images while the camera circled it. We built an orbit test (camera
+  circling a model and its card in 3 degree steps, scoring frame-to-frame popping and card-vs-model difference) and
+  fixed what it found:
+  - Depth search: each of the three blended views now traces the pixel's view ray through its baked depth (16 point
+    sampled steps plus 4 binary refinements) instead of taking one parallax step, so the views land on the same
+    surface and stop doubling. A shell thickness stops rays from catching the steep walls at silhouettes (streaks).
+    The step count drops as the card shrinks on screen.
+  - Atlas size bug: with a grid that doesn't divide the atlas (2048 / 12) the baker packed 170-pixel frames while the
+    shader expected 170.67, so frames drifted across the atlas. The baker now shrinks the atlas to a whole number of
+    frames (2040 for 12 at 2048).
+  - Default grid 12 (views 15 degrees apart instead of 25), plain barycentric blend weights (sharper weights popped
+    more), alpha-to-coverage edges in the forward pass.
+  - Tighter bounds: Ritter bounding sphere from the vertices instead of the box half diagonal, so the object fills more
+    of each frame. Padded background texels now bake at the far plane so the search passes through them.
+  - Optional baked sky visibility (bake setting "Bake Self Shadow", material slider "Sky Occlusion"), off by default:
+    it darkened enclosed parts the real model shows lit.
+  - The Flatpack Renderer inspector no longer lists internal members.
+  - README with a wireframe before/after hero and a turntable GIF of the CC BY tree; benchmark file rerun.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `FlatpackBakeSettings.cs`, `FlatpackRendererEditor.cs`; `Libraries/Flatpack/Code/FlatpackMath.cs`;
+  `Libraries/Flatpack/UnitTests/FlatpackMathTests.cs`; `Assets/flatpack/*` (re-baked); `README.md`, `docs/media/*`;
+  `Benchmarks/2026-10-24_phase2.md`
+- Testing: editor. Orbit test, office chair: card vs model difference 7.02 before, 3.73 after; on all four models
+  tested the card now flickers less than the real model (chair 7.65 vs 8.76, SCP-173 2.79 vs 3.44, tree 10.43 vs
+  13.93, bed 18.36 vs 18.37). Benchmark rerun: 100 hospital beds 52.3 ms to 1.6 ms GPU. `dotnet test` passes 7 of 7.
+  Still visible up close: softness from 170-pixel frames at 2048, metal parts lit as plastic.
+
 ## 2026-10-24: Test suite, benchmark, sharper atlases, one-click setup
 
 - Change:

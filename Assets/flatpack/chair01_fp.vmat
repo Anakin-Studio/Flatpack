@@ -5,9 +5,9 @@ Layer0
 	TextureAlbedo "flatpack/chair01_fp_albedo.png"
 	TextureNormalDepth "flatpack/chair01_fp_normal.png"
 	TextureRoughnessAo "flatpack/chair01_fp_rao.png"
-	g_flFlatpackGrid "8.000000"
+	g_flFlatpackGrid "12.000000"
 	g_flFlatpackMode "0.000000"
-	g_vFlatpackCenter "[-0.459889 0.000000 19.154470]"
-	g_flFlatpackRadius "26.914820"
+	g_vFlatpackCenter "[-1.764627 2.629332 17.549300]"
+	g_flFlatpackRadius "25.279460"
 	g_flFlatpackZLocked "0.000000"
 }
