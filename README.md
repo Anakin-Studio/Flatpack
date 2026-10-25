@@ -83,6 +83,13 @@ size: the card takes over at 30 bounding radii, when the object is a few percent
 Up close nothing changes: your `.vmdl`'s own LODs keep working, and the card is the last step after them. Every other
 object using the same model finds the bake on its own once you add the component.
 
+## Flatpack a whole scene in one click
+
+**Editor > Flatpack > Optimize Scene** lists every model in the open scene with its copies, triangles and bake status,
+and recommends each one with a reason: big savings, "cheap already", or skip for animated models. Recommended models
+start ticked. **Flatpack Selected** bakes whatever is missing and adds Flatpack to every copy as one step, so Ctrl+Z
+takes it all back; **Remove Flatpack from Scene** does the same in reverse.
+
 Other ways in:
 
 - Right-click a model in the asset browser: **Bake Flatpack Impostor**.
@@ -169,6 +176,7 @@ published.
   Flatpack Renderer inspector after cloning; their bakes aren't in git.
 - `Assets/scenes/flatpack_benchmark.scene`: the grid used for the numbers above.
 - `CHANGELOG.md`: every change, with how it was tested.
+- `docs/ROADMAP.md`: what's next, from the research behind each item.
 
 ## Credits
 

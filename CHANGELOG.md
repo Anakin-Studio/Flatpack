@@ -5,6 +5,27 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Optimize Scene window and roadmap
+
+- Change:
+  - New window, Editor > Flatpack > Optimize Scene. It lists every model in the open scene with copies, triangles and
+    bake status, and recommends each one with a reason: Recommended (big saving, with a warning for thin parts),
+    Low gain (cheap already), Skip (animated, already a flat quad, tiny) or Done. Recommended models start ticked;
+    Select Recommended / All / None and Rescan sit above the list.
+  - **Flatpack Selected** bakes the models that have no bake yet, using the bake window's saved settings, then adds
+    Flatpack to every copy as one undo step. **Remove Flatpack from Scene** removes every Flatpack component as one
+    undo step.
+  - Bakes now record how much coverage thin parts lose at range (`FlatpackImpostor.ThinDetail`), which the optimiser
+    uses for its thin-part warning.
+  - `docs/ROADMAP.md`: ranked plan from research into other impostor tools, papers and unused s&box engine features.
+  - README: one-click section for the optimiser; roadmap link.
+- Files: `Libraries/Flatpack/Editor/FlatpackSceneOptimizer.cs` (new), `Libraries/Flatpack/Code/FlatpackImpostor.cs`,
+  `Libraries/Flatpack/Editor/FlatpackBaker.cs`; `docs/ROADMAP.md` (new); `README.md`
+- Testing: editor. On a discarded copy of the benchmark scene the window recommended the tree, knight and horse
+  statue, marked the rock and a low-poly chair low gain, and skipped the animated citizen and the ground plane.
+  Flatpack Selected added 10 components; undo removed them; applying again and Remove both worked, and undoing Remove
+  brought all 10 back. Compiles clean.
+
 ## 2026-10-24: Ten-model test, close-range and thin-part fixes, Benchmarks by iteration
 
 - Change:

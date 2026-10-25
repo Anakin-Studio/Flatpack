@@ -161,6 +161,7 @@ public static class FlatpackBaker
 		impostor.Center = center;
 		impostor.Radius = radius;
 		impostor.Bounds = bounds;
+		impostor.ThinDetail = mipAlphaScales[1];
 		impostorAsset.SaveToDisk( impostor );
 		files.Add( impostorFile );
 

@@ -60,6 +60,12 @@ public sealed class FlatpackImpostor : GameResource
 	/// </summary>
 	[Property, ReadOnly] public BBox Bounds { get; set; }
 
+	/// <summary>
+	/// How much alpha the baker had to add back at mip level 2 to keep thin parts covered (1 = none). High values mean
+	/// twigs, spindles or wire mesh that the card keeps only from further away; the scene optimiser warns about them.
+	/// </summary>
+	[Property, ReadOnly] public float ThinDetail { get; set; } = 1.0f;
+
 	Model _cardModel;
 	Material _cardMaterial;
 
