@@ -5,6 +5,16 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-24: Marketing kit for the sbox.game page
+
+- Change: `marketing/` holds what the package page needs: a 1024 x 1024 thumbnail (tree beside its card, "263,066
+  faces" against "1 face"), a 1920 x 1080 cover (256 Flatpack trees, 926 triangles and 20 draw calls on screen), the
+  before/after and forest screenshots, the turntable GIF, and `README.md` with the title, two summaries, the page
+  description, tags, alt text and where each image goes. Every image uses only the CC BY tree, credited on the image.
+- Files: `marketing/*`
+- Testing: editor. The forest shot is a fresh play-mode render with the current shader; the counts come from
+  `perf_rendering` for that frame.
+
 ## 2026-10-24: Stable impostors (flicker and ghosting fixes), README
 
 - Change: the card flickered and showed double images while the camera circled it. We built an orbit test (camera
