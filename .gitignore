@@ -37,3 +37,10 @@ Assets/flatpack/suite/
 Assets/flatpack/gallery/
 Assets/shaders/flatpack_impostor_v1.*
 Assets/flatpack/sweep/
+
+# Local copy of the Orion SCP-RP map for real-scene tests (never committed: Orion assets, mixed licences)
+Assets/materials/
+Assets/textures/
+Assets/models/
+Assets/scenes/local/
+Assets/flatpack/orion/

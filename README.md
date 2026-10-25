@@ -67,16 +67,21 @@ The default swap happens at 30 radii, well past all of these. Full per-model num
 
 ## Quality levels
 
-Pick a level when you bake. Medium is the default and right for most things.
+Pick a level when you bake, or pick **Auto** and let the baker choose. Medium is the default.
 
-| Level | Views | Atlas | Search steps | Video memory | GPU, worst case | Use it for |
-|---|---|---|---|---|---|---|
-| Low | 12 x 12 | 1024 | 8 | 4 MB | 5.2 ms | Props you only see from far away |
-| **Medium** | 12 x 12 | 2048 | 16 | 16 MB | 6.9 ms | Almost everything |
-| High | 24 x 24 | 4096 | 16 | 64 MB | 6.8 ms | Large props you see from mid range |
-| Ultra | 24 x 24 | 4096 | 32 | 64 MB | 10.6 ms | Thin or detailed props that swap near the camera |
+| Level | Views | Atlas | Search steps | Video memory | Use it for |
+|---|---|---|---|---|---|
+| Low | 12 x 12 | 1024 | 8 | 4 MB | Props you only see from far away |
+| **Medium** | 12 x 12 | 2048 | 16 | 16 MB | Almost everything |
+| High | 24 x 24 | 4096 | 16 | 64 MB | Large props you see from mid range |
+| Ultra | 12 x 12 | 3072 | 32 | 36 MB | Thin or detailed props that swap near the camera |
+| Auto | picks one | | | | Bakes at Low, checks the card against the model, and steps up until it holds up from your swap distance |
 
-GPU time is 2,500 copies in a dense forest with the camera inside it, the worst case for cards.
+Ultra and the 32 search steps cost about 1.5 times Medium's GPU time where cards fill the screen; the other levels cost
+about the same as Medium. Every bake is supersampled 2x (thin parts bake as partial coverage) and checked against the
+model afterwards: the bake stores the distance from which the card looks like the model, and the Flatpack Renderer
+swaps there. The check was calibrated against a person's judgement
+([iteration 6](Benchmarks/iteration-6-real-scenes/README.md#does-it-look-right-to-a-person)).
 
 ![Quality levels by distance, and flicker against the real model](Benchmarks/iteration-4-quality-levels/media/presets_quality.png)
 ![The chair at every level while the camera circles](Benchmarks/iteration-4-quality-levels/media/presets_orbit_chair.gif)
@@ -84,7 +89,29 @@ GPU time is 2,500 copies in a dense forest with the camera inside it, the worst 
 More views don't reduce flicker: at every level the card flickers as much as the real model does, and no more. What
 changes is sharpness. Ultra's extra search steps keep thin parts up close (the chair holds up from 3 radii instead of
 16), and High's extra views and pixels help past 8 radii. Measurements, charts and the GPU tests behind the table:
-[`Benchmarks/iteration-4-quality-levels`](Benchmarks/iteration-4-quality-levels/README.md).
+[`Benchmarks/iteration-4-quality-levels`](Benchmarks/iteration-4-quality-levels/README.md), and for supersampling, the
+new Ultra, the bake check and Auto: [`Benchmarks/iteration-5-measure-and-auto`](Benchmarks/iteration-5-measure-and-auto/README.md).
+
+In iteration 5's test at a 30-radii target, Auto picked Low for most models (4 MB instead of 16): the knight, dragon,
+tree and chair. It stepped up only where it had to, like the fern (High).
+
+## Where to swap
+
+![GPU time against swap distance, with native](Benchmarks/iteration-6-real-scenes/media/swap_distance_gpu.png)
+
+2,500 copies of one model, the camera at the edge of the field so near and far copies mix. Grey is native: real models
+everywhere, with their own LODs.
+
+| Model | Native | Flatpack, best swap | Swap at |
+|---|---|---|---|
+| Tree (534,000 triangles) | 28.8 ms | **10.0 ms** | 8 radii, where the card starts to look right |
+| Knight statue (3,800 triangles) | 5.7 ms | **3.5 ms** | 30 radii |
+| Wooden chair (632 triangles) | **1.9 ms** | 3.6 ms | (cheaper as a real model) |
+
+Heavy models gain the most, and only if the card takes over as soon as it looks right: at 30 radii the tree forest
+saved almost nothing, because its own LODs already simplify the far trees. Very light models are cheaper as real
+models. So the Flatpack Renderer swaps at the bake's measured distance by default, and the scene optimiser marks light
+models as low gain. Details: [`Benchmarks/iteration-6-real-scenes`](Benchmarks/iteration-6-real-scenes/README.md).
 
 ## Install
 
@@ -97,9 +124,11 @@ install it. To work from source, clone this repo and copy `Libraries/Flatpack` i
 2. Add the **Flatpack Renderer** component.
 3. Press **Bake Impostor** in its inspector.
 
-The bake takes a few seconds and writes the atlases, a material and a `.fpack` resource next to
-the model (or in `Assets/flatpack/` for models from sbox.game). The component picks the swap distance from the model's
-size: the card takes over at 30 bounding radii, when the object is a few percent of the screen tall.
+The bake takes a few seconds, checks itself against the model, and writes the atlases, a material and a `.fpack` resource next to
+the model (or in `Assets/flatpack/` for models from sbox.game). The component swaps where the bake was measured to look like the
+model (never closer than 6 bounding radii); bakes without a measurement swap at 30 bounding radii.
+
+The inspector then shows the bake's quality level, how close it holds up, and where the card takes over.
 
 Up close nothing changes: your `.vmdl`'s own LODs keep working, and the card is the last step after them. Every other
 object using the same model finds the bake on its own once you add the component.
@@ -124,7 +153,8 @@ Other ways in:
 |---|---|
 | Impostor | The baked `.fpack`. Leave it empty to use any bake of the source model. |
 | Source | The real model's renderer. Found on the same object if empty. |
-| Auto Swap Distance | Swap at Auto Distance Factor bounding radii (default 30). Off: use Swap Distance. |
+| Auto Swap Distance | Pick the swap distance from the object's size and the bake's measurement. Off: use Swap Distance. |
+| Swap When It Looks Right | On: swap at the distance the baker measured the card looking like the model, never closer than Minimum Swap Radii (6). Off, or no measurement: Auto Distance Factor (30) radii. |
 | Swap Distance | Camera distance where the card takes over, in world units. |
 | Hysteresis | Dead band around the swap distance, so a camera hovering at the boundary doesn't flicker. |
 | Cross Fade, Fade Time | Dither the card in over the model instead of popping. |
@@ -146,7 +176,9 @@ quad's position and size and builds the card from the bake data and the instance
 
 | Setting | Default | Notes |
 |---|---|---|
-| Quality | Medium | Low, Medium, High, Ultra (see [Quality levels](#quality-levels)), or Custom for the three below. |
+| Quality | Medium | Low, Medium, High, Ultra, Auto (see [Quality levels](#quality-levels)), or Custom for the three below. |
+| Auto Target Radii | 30 | Auto only. The distance from which the card has to match the model: your swap distance. |
+| Measure Quality | on | Check the finished bake against the model (about 2 seconds) and store where it looks right. |
 | Grid Size | 12 | Custom only. Views per atlas side. 12 gives 144 views, 15 degrees apart. 8 ghosts. |
 | Atlas Size | 2048 | Custom only. Grow it with the grid: each view gets Atlas Size / Grid Size pixels. |
 | Search Steps | 16 | Custom only. Written into the material; the biggest lever on quality and GPU cost. |
@@ -154,6 +186,7 @@ quad's position and size and builds the card from the bake data and the instance
 | Z-Locked Card | off | Card only turns around the object's up axis. Always on for Cylinder. |
 | Bake Roughness Ao | on | Roughness and material AO atlas. |
 | Bake Self Shadow | off | Bakes how much sky each part sees; see Sky Occlusion below. Triples bake time. |
+| Supersample | 2 | Render each view this much larger and average down. 2 keeps thin parts as partial coverage; 4 adds little. |
 | Edge Padding | 16 | Texels of colour grown past each silhouette, so mipmaps don't halo. |
 | Output Folder | next to the model | Relative to `Assets`. |
 

@@ -25,6 +25,24 @@ public sealed class FlatpackRendererEditor : ComponentEditorWidget
 		var renderers = obj.Targets.OfType<FlatpackRenderer>().ToArray();
 		var baked = renderers.All( x => x.Impostor is not null );
 
+		// What the bake is, how close it holds up, and whether the swap distance is inside that.
+		if ( renderers.Length == 1 && renderers[0].Impostor is { } impostor )
+		{
+			var r = renderers[0];
+			var swapRadii = impostor.Radius > 0 ? r.EffectiveSwapDistance / impostor.Radius : 0;
+			var holds = impostor.HoldsUpFrom switch
+			{
+				> 0 => $"matches the model from {impostor.HoldsUpFrom:0.#} radii",
+				< 0 => "never matches the model closely inside 16 radii",
+				_ => "not measured (re-bake to measure)",
+			};
+			var level = string.IsNullOrEmpty( impostor.QualityLevel ) ? "" : $"{impostor.QualityLevel} bake, ";
+			var info = Layout.Add( new Label( $"{level}{holds}. Swaps at {swapRadii:0.#} radii ({r.EffectiveSwapDistance:0} units)." ) { WordWrap = true } );
+			info.ContentMargins = new Sandbox.UI.Margin( 8, 4, 8, 0 );
+			if ( impostor.HoldsUpFrom < 0 )
+				info.SetStyles( "color: #e0a030;" );
+		}
+
 		var row = Layout.AddRow();
 		row.Margin = new Sandbox.UI.Margin( 8, 4, 8, 8 );
 		row.Spacing = 4;

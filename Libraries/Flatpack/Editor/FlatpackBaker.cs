@@ -59,13 +59,96 @@ public static class FlatpackBaker
 
 		/// <summary>Wall-clock bake time.</summary>
 		public TimeSpan Duration { get; init; }
+
+		/// <summary>The quality level the bake ended up at (Auto picks one).</summary>
+		public FlatpackQuality Level { get; init; }
+
+		/// <summary>How closely the card matches the model by distance, when the bake was measured.</summary>
+		public FlatpackQualityCheck.Report Measured { get; init; }
 	}
 
 	/// <summary>
-	/// Bake one model. Runs on the main thread but yields between frames, so the editor keeps drawing; cancel
-	/// with <paramref name="cancel"/>. <paramref name="progress"/> gets a 0..1 fraction and a status line.
+	/// Bake one model at the settings' quality level, or for <see cref="FlatpackQuality.Auto"/> at the cheapest level that
+	/// matches the model from <see cref="FlatpackBakeSettings.AutoTargetRadii"/> outward. Measures the result when
+	/// <see cref="FlatpackBakeSettings.MeasureQuality"/> is on (always for Auto) and stores where it holds up.
 	/// </summary>
 	public static async Task<Result> BakeAsync( Model model, FlatpackBakeSettings settings, Action<float, string> progress = null, CancellationToken cancel = default )
+	{
+		if ( settings.Quality != FlatpackQuality.Auto )
+		{
+			var result = await BakeLevelAsync( model, settings, progress, cancel );
+			return settings.MeasureQuality ? await MeasureAsync( result, progress, cancel ) : result;
+		}
+
+		// Auto: climb the levels until one holds up at the target distance. Each bake overwrites the last.
+		var timer = Stopwatch.StartNew();
+		var levels = new[] { FlatpackQuality.Low, FlatpackQuality.Medium, FlatpackQuality.High, FlatpackQuality.Ultra };
+		var best = FlatpackQuality.Ultra;
+		var bestScore = float.MaxValue;
+		Result last = null;
+
+		for ( var i = 0; i < levels.Length; i++ )
+		{
+			var level = levels[i];
+			var step = i;
+			var baked = await BakeLevelAsync( model, settings.WithQuality( level ),
+				( f, text ) => progress?.Invoke( (step + f * 0.8f) / levels.Length, $"{level}: {text}" ), cancel );
+			last = await MeasureAsync( baked, ( f, text ) => progress?.Invoke( (step + 0.8f + f * 0.2f) / levels.Length, $"{level}: {text}" ), cancel );
+
+			// Holds up from the target (judged out to 16 radii; past that every level matches as well as it ever will).
+			if ( last.Measured.HoldsUpFrom <= MathF.Min( settings.AutoTargetRadii, 16.0f ) )
+				return Finish( last, timer );
+
+			var score = last.Measured.HoldsUpFrom;
+
+			if ( score < bestScore )
+			{
+				bestScore = score;
+				best = level;
+			}
+		}
+
+		// Nothing held up (fine wire mesh, for example). Keep whichever level held up from closest.
+		if ( best != FlatpackQuality.Ultra )
+		{
+			var baked = await BakeLevelAsync( model, settings.WithQuality( best ), progress, cancel );
+			last = await MeasureAsync( baked, progress, cancel );
+		}
+
+		return Finish( last, timer );
+	}
+
+	static Result Finish( Result r, Stopwatch timer ) => new()
+	{
+		Impostor = r.Impostor, ImpostorPath = r.ImpostorPath, MaterialPath = r.MaterialPath, Files = r.Files,
+		Level = r.Level, Measured = r.Measured, Duration = timer.Elapsed,
+	};
+
+	/// <summary>
+	/// Measure a finished bake and store where it holds up on its <c>.fpack</c>.
+	/// </summary>
+	static async Task<Result> MeasureAsync( Result baked, Action<float, string> progress, CancellationToken cancel )
+	{
+		progress?.Invoke( 0.0f, "Measuring against the model" );
+		var report = await FlatpackQualityCheck.MeasureAsync( baked.Impostor, cancel: cancel );
+
+		var impostor = baked.Impostor;
+		impostor.HoldsUpFrom = float.IsPositiveInfinity( report.HoldsUpFrom ) ? -1.0f : report.HoldsUpFrom;
+		AssetSystem.FindByPath( baked.ImpostorPath )?.SaveToDisk( impostor );
+		progress?.Invoke( 1.0f, report.Summary );
+
+		return new Result
+		{
+			Impostor = impostor, ImpostorPath = baked.ImpostorPath, MaterialPath = baked.MaterialPath, Files = baked.Files,
+			Duration = baked.Duration, Level = baked.Level, Measured = report,
+		};
+	}
+
+	/// <summary>
+	/// Bake one model at one quality level. Runs on the main thread but yields between frames, so the editor keeps
+	/// drawing; cancel with <paramref name="cancel"/>. <paramref name="progress"/> gets a 0..1 fraction and a status line.
+	/// </summary>
+	static async Task<Result> BakeLevelAsync( Model model, FlatpackBakeSettings settings, Action<float, string> progress, CancellationToken cancel )
 	{
 		if ( model is null || model.IsError )
 			throw new ArgumentException( "Pick a valid model to bake." );
@@ -101,7 +184,7 @@ public static class FlatpackBaker
 		var rao = settings.BakeRoughnessAo ? new Color32[atlas * atlas] : null;
 
 		progress?.Invoke( 0.0f, $"Baking {name}" );
-		await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, progress, cancel );
+		await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, Math.Clamp( settings.Supersample, 1, 4 ), progress, cancel );
 
 		cancel.ThrowIfCancellationRequested();
 		progress?.Invoke( 0.85f, "Padding edges" );
@@ -163,6 +246,8 @@ public static class FlatpackBaker
 		impostor.Radius = radius;
 		impostor.Bounds = bounds;
 		impostor.ThinDetail = mipAlphaScales[1];
+		impostor.QualityLevel = settings.Quality.ToString();
+		impostor.HoldsUpFrom = 0.0f;
 		impostorAsset.SaveToDisk( impostor );
 		files.Add( impostorFile );
 
@@ -175,6 +260,7 @@ public static class FlatpackBaker
 			MaterialPath = materialPath,
 			Files = files,
 			Duration = timer.Elapsed,
+			Level = settings.Quality,
 		};
 	}
 
@@ -182,7 +268,7 @@ public static class FlatpackBaker
 	/// Render every frame and copy it into the CPU atlases.
 	/// </summary>
 	static async Task CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius,
-		Color32[] albedo, Color32[] normalDepth, Color32[] rao, bool selfShadow, Action<float, string> progress, CancellationToken cancel )
+		Color32[] albedo, Color32[] normalDepth, Color32[] rao, bool selfShadow, int supersample, Action<float, string> progress, CancellationToken cancel )
 	{
 		var depthMaterial = Material.Create( "flatpack_bake_depth", DepthShader, true );
 		selfShadow &= rao is not null;
@@ -225,7 +311,7 @@ public static class FlatpackBaker
 				}
 			}
 
-			var frame = new Bitmap( cell, cell, false );
+			var frame = new Bitmap( cell * supersample, cell * supersample, false );
 			var total = n * n;
 			var sliceTimer = Stopwatch.StartNew();
 
@@ -259,6 +345,9 @@ public static class FlatpackBaker
 						if ( selfShadow )
 							visibility = CaptureSkyVisibility( scene, camera, renderer, sun, frame, normalPixels );
 					}
+
+					if ( supersample > 1 )
+						Downsample( cell, supersample, ref colorPixels, ref normalPixels, ref depthPixels, ref roughPixels, ref aoPixels, ref visibility );
 
 					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, albedo, normalDepth, rao );
 
@@ -372,6 +461,71 @@ public static class FlatpackBaker
 		renderer.MaterialOverride = overrideMaterial;
 		camera.RenderToBitmap( target );
 		return target.GetPixels32();
+	}
+
+	/// <summary>
+	/// Average a supersampled frame down to <paramref name="cell"/> texels a side. Alpha becomes the share of covered
+	/// samples; colour, normal, depth and the material channels average over the covered samples only, so the empty
+	/// background doesn't darken thin parts.
+	/// </summary>
+	static void Downsample( int cell, int ss, ref Color32[] color, ref Color32[] normal, ref Color32[] depth, ref Color32[] rough, ref Color32[] ao, ref byte[] visibility )
+	{
+		var size = cell * ss;
+		var outColor = new Color32[cell * cell];
+		var outNormal = new Color32[cell * cell];
+		var outDepth = new Color32[cell * cell];
+		var outRough = rough is null ? null : new Color32[cell * cell];
+		var outAo = ao is null ? null : new Color32[cell * cell];
+		var outVis = visibility is null ? null : new byte[cell * cell];
+
+		for ( var y = 0; y < cell; y++ )
+		{
+			for ( var x = 0; x < cell; x++ )
+			{
+				float r = 0, g = 0, b = 0, a = 0, nx = 0, ny = 0, nz = 0, d = 0, ro = 0, oc = 0, vi = 0;
+				var covered = 0;
+
+				for ( var sy = 0; sy < ss; sy++ )
+				{
+					for ( var sx = 0; sx < ss; sx++ )
+					{
+						var i = (y * ss + sy) * size + x * ss + sx;
+						var c = color[i];
+						a += c.a;
+						if ( c.a == 0 )
+							continue;
+
+						covered++;
+						r += c.r; g += c.g; b += c.b;
+						nx += normal[i].r / 127.5f - 1.0f; ny += normal[i].g / 127.5f - 1.0f; nz += normal[i].b / 127.5f - 1.0f;
+						d += depth[i].r;
+						if ( rough is not null ) ro += rough[i].r;
+						if ( ao is not null ) oc += ao[i].r;
+						if ( visibility is not null ) vi += visibility[i];
+					}
+				}
+
+				var o = y * cell + x;
+				if ( covered == 0 )
+					continue;
+
+				byte B( float v ) => (byte)Math.Clamp( (int)MathF.Round( v ), 0, 255 );
+				var alpha = B( a / (ss * ss) );
+				outColor[o] = new Color32( B( r / covered ), B( g / covered ), B( b / covered ), Math.Max( alpha, (byte)1 ) );
+
+				var len = MathF.Sqrt( nx * nx + ny * ny + nz * nz );
+				if ( len < 1e-4f ) len = 1.0f;
+				outNormal[o] = new Color32( B( (nx / len + 1.0f) * 127.5f ), B( (ny / len + 1.0f) * 127.5f ), B( (nz / len + 1.0f) * 127.5f ), 255 );
+
+				var dv = B( d / covered );
+				outDepth[o] = new Color32( dv, dv, dv, 255 );
+				if ( outRough is not null ) { var v = B( ro / covered ); outRough[o] = new Color32( v, v, v, 255 ); }
+				if ( outAo is not null ) { var v = B( oc / covered ); outAo[o] = new Color32( v, v, v, 255 ); }
+				if ( outVis is not null ) outVis[o] = B( vi / covered );
+			}
+		}
+
+		color = outColor; normal = outNormal; depth = outDepth; rough = outRough; ao = outAo; visibility = outVis;
 	}
 
 	/// <summary>

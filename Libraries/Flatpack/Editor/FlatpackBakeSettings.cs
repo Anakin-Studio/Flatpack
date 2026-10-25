@@ -10,6 +10,7 @@ public enum FlatpackAtlasSize
 	[Title( "512" )] Size512 = 512,
 	[Title( "1024" )] Size1024 = 1024,
 	[Title( "2048" )] Size2048 = 2048,
+	[Title( "3072" )] Size3072 = 3072,
 	[Title( "4096" )] Size4096 = 4096,
 }
 
@@ -28,8 +29,11 @@ public enum FlatpackQuality
 	[Title( "High" ), Description( "24 x 24 views, 4096 atlas, 16 search steps. About 64 MB. Same as Medium up close, closer to the real model past 8 bounding radii." )]
 	High,
 
-	[Title( "Ultra" ), Description( "24 x 24 views, 4096 atlas, 32 search steps. About 64 MB and about 1.5x the GPU cost of Medium. Thin parts hold up much closer: for props that swap near the camera." )]
+	[Title( "Ultra" ), Description( "12 x 12 views, 3072 atlas, 32 search steps. About 36 MB and about 1.5x the GPU cost of Medium. The sharpest level up close: for props that swap near the camera." )]
 	Ultra,
+
+	[Title( "Auto" ), Description( "Bake at Low, measure the card against the model at the target distance, and step up a level until it holds up. Slower to bake; saves memory on models that look fine at a lower level." )]
+	Auto,
 
 	[Title( "Custom" ), Description( "Set views, atlas size and search steps yourself." )]
 	Custom,
@@ -44,6 +48,18 @@ public sealed class FlatpackBakeSettings
 	/// How good the impostor looks, against memory and GPU cost. Pick Custom to set the numbers yourself.
 	/// </summary>
 	[Property] public FlatpackQuality Quality { get; set; } = FlatpackQuality.Medium;
+
+	/// <summary>
+	/// For Auto: the distance, in bounding radii, where the card has to match the model (from there outward). Set it to
+	/// the swap distance you'll use; the Flatpack Renderer's automatic one is 30.
+	/// </summary>
+	[Property, Range( 2, 60 ), Step( 1 ), ShowIf( nameof( Quality ), FlatpackQuality.Auto )] public float AutoTargetRadii { get; set; } = 30.0f;
+
+	/// <summary>
+	/// Measure the finished bake against the model (a second or two) and store where it holds up. The Flatpack Renderer
+	/// then never swaps closer than that, and the inspector shows it.
+	/// </summary>
+	[Property] public bool MeasureQuality { get; set; } = true;
 
 	/// <summary>
 	/// Frames per atlas side. 12 gives 144 views, 15 degrees apart on the hemisphere. 8 ghosts visibly; past 12, more
@@ -70,9 +86,20 @@ public sealed class FlatpackBakeSettings
 		FlatpackQuality.Low => (12, FlatpackAtlasSize.Size1024, 8),
 		FlatpackQuality.Medium => (12, FlatpackAtlasSize.Size2048, 16),
 		FlatpackQuality.High => (24, FlatpackAtlasSize.Size4096, 16),
-		FlatpackQuality.Ultra => (24, FlatpackAtlasSize.Size4096, 32),
+		FlatpackQuality.Ultra => (12, FlatpackAtlasSize.Size3072, 32),
+		FlatpackQuality.Auto => (12, FlatpackAtlasSize.Size1024, 8),
 		_ => (GridSize, AtlasSize, SearchSteps),
 	};
+
+	/// <summary>
+	/// A copy of these settings at another quality level.
+	/// </summary>
+	public FlatpackBakeSettings WithQuality( FlatpackQuality quality )
+	{
+		var copy = (FlatpackBakeSettings)MemberwiseClone();
+		copy.Quality = quality;
+		return copy;
+	}
 
 	/// <summary>
 	/// Which view directions get frames.
@@ -97,6 +124,13 @@ public sealed class FlatpackBakeSettings
 	/// Needs <see cref="BakeRoughnessAo"/>; roughly triples bake time.
 	/// </summary>
 	[Property, ShowIf( nameof( BakeRoughnessAo ), true )] public bool BakeSelfShadow { get; set; }
+
+	/// <summary>
+	/// Render each view this many times larger and average it down. Parts thinner than a texel (wire mesh, twigs) then
+	/// bake as partial coverage instead of filling in or vanishing. 2 measured 2 to 3 points fewer wrong pixels up close
+	/// for about a third more bake time; 4 adds little. Fine wire mesh (fences) gets worse either way.
+	/// </summary>
+	[Property, Range( 1, 4 ), Step( 1 )] public int Supersample { get; set; } = 2;
 
 	/// <summary>
 	/// How many texels to grow colour out past the silhouette, inside each frame, so mipmaps don't pull in

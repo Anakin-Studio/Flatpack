@@ -78,7 +78,22 @@ public sealed class FlatpackRenderer : Component, Component.ExecuteInEditor
 	[Property] public bool AutoSwapDistance { get; set; } = true;
 
 	/// <summary>
-	/// Auto mode swaps at this many bounding-sphere radii from the camera.
+	/// Auto mode swaps as soon as the card looks like the model: at the distance the baker measured
+	/// (<see cref="FlatpackImpostor.HoldsUpFrom"/>, calibrated by eye), never closer than <see cref="MinimumSwapRadii"/>.
+	/// Measured in iteration 6: a 534,000-triangle tree forest drew in 7 to 13 ms swapping at 8 radii against 25 to 28 ms
+	/// at 30. Turn it off to swap at <see cref="AutoDistanceFactor"/> instead (bakes that weren't measured always do).
+	/// </summary>
+	[Property, ShowIf( nameof( AutoSwapDistance ), true )] public bool SwapWhenItLooksRight { get; set; } = true;
+
+	/// <summary>
+	/// The closest an early swap may happen, in bounding radii. Up close a card covers many pixels and costs more to
+	/// draw, so very light models can end up slower as cards than as models.
+	/// </summary>
+	[Property, Range( 2, 30 ), ShowIf( nameof( SwapWhenItLooksRight ), true )] public float MinimumSwapRadii { get; set; } = 6.0f;
+
+	/// <summary>
+	/// Auto mode swaps at this many bounding-sphere radii from the camera when it isn't swapping early (or the bake
+	/// wasn't measured), or where the bake holds up if that's further.
 	/// </summary>
 	[Property, Range( 5, 100 ), ShowIf( nameof( AutoSwapDistance ), true )] public float AutoDistanceFactor { get; set; } = 30.0f;
 
@@ -98,7 +113,11 @@ public sealed class FlatpackRenderer : Component, Component.ExecuteInEditor
 				return SwapDistance;
 
 			var scale = WorldScale;
-			return Impostor.Radius * MathF.Max( scale.x, MathF.Max( scale.y, scale.z ) ) * AutoDistanceFactor;
+			var measured = Impostor.HoldsUpFrom > 0.0f;
+			var factor = SwapWhenItLooksRight && measured
+				? MathF.Max( Impostor.HoldsUpFrom, MinimumSwapRadii )
+				: MathF.Max( AutoDistanceFactor, Impostor.HoldsUpFrom );
+			return Impostor.Radius * MathF.Max( scale.x, MathF.Max( scale.y, scale.z ) ) * factor;
 		}
 	}
 

@@ -26,7 +26,19 @@ Measured in [`Benchmarks/iteration-4-quality-levels`](../Benchmarks/iteration-4-
 - **Early depth test** in the shader (conservative depth): 6 to 29% less GPU time where cards overlap, same images.
 - Tested and dropped: blend sharpness above 1 (worse), a higher minimum search step count at range (no change).
 
-## Next: make it native (iteration 5)
+## Done in iteration 5: measuring better, supersampling, Auto
+
+Measured in [`Benchmarks/iteration-5-measure-and-auto`](../Benchmarks/iteration-5-measure-and-auto/README.md).
+
+- Harness: error heatmaps, a shape score that catches filled-in mesh, a seven-model test set (one per failure type).
+- Supersampled bakes (2x by default), a sharper and lighter Ultra (12 x 12 at 3072, 36 MB), and the answer to why
+  12 x 12 at 4096 lost at range: 341-pixel views don't halve cleanly into mipmaps; 256-pixel views don't have the
+  problem.
+- The baker checks every bake against its model and stores where it holds up (item 4 below, done); the renderer's
+  automatic swap distance respects it. Auto quality picks the cheapest level that holds up at your swap distance.
+- Tried and dropped: smooth hit position, a thicker search shell, facing-weighted blending, soft coverage.
+
+## Next: make it native (iteration 6)
 
 1. **The card becomes a real LOD of the model (M).** s&box can build a model with LODs from code:
    `ModelBuilder.AddMesh(mesh, lod)` and `WithLodDistance`, and Flatpack can read every LOD of the source with
@@ -39,7 +51,8 @@ Measured in [`Benchmarks/iteration-4-quality-levels`](../Benchmarks/iteration-4-
    `LODGroupList`) next to the source, since clutter stores model paths.
 3. **Project default quality (S).** Quality levels shipped in iteration 4; what's left is a project-wide default.
    Putting `[Property]` settings on `FlatpackSystem` shows them on Project Settings > Systems with no extra UI.
-4. **Quality score after every bake (M).** Run the iteration 3 harness inside the editor after a bake: render model and
+4. **Quality score after every bake (M). Done in iteration 5.** What's left: show the swap distance as a share of
+   screen height. Run the iteration 3 harness inside the editor after a bake: render model and
    card from a few distances and report "holds up from N bounding radii", with a warning when it never does (fences).
    Then **set the swap distance from that score** instead of a flat 30 radii, and show it as a percentage of screen
    height (Unity's convention), which stays right across resolutions. Fixes: guessing distances; silent bad bakes.
@@ -51,7 +64,7 @@ Measured in [`Benchmarks/iteration-4-quality-levels`](../Benchmarks/iteration-4-
    addon reports 75% savings from half-res material maps and 33% from skipping constant maps. Show the cost in the
    window before baking.
 
-## After that: better looking (iteration 6)
+## After that: better looking (iteration 7)
 
 7. **Foliage translucency (M).** Bake the engine's Transmission view into a spare channel and apply the same
    wrap-and-back-scatter lighting `foliage.shader` uses (`ApplyFoliageLighting`). Fixes: leaves that glow on the real
@@ -67,8 +80,8 @@ Measured in [`Benchmarks/iteration-4-quality-levels`](../Benchmarks/iteration-4-
 11. **Grazing-angle streaks (M).** Flat surfaces seen edge-on (a chair seat at 2 radii) show stair-step streaks at
     every quality level: the search lands on neighbouring texels of a steep depth slope. Try a filtered final
     refinement step, or a slope-aware thickness.
-12. **Why 12 x 12 at 4096 loses at range (S).** It was the sharpest bake up close but worse than the default past 12
-    radii. Likely mip alignment: 341-pixel views don't halve cleanly. If so, round views to a power of two.
+12. **Why 12 x 12 at 4096 loses at range. Answered in iteration 5:** mip alignment. Levels now use views that halve
+    cleanly (Ultra: 256 px).
 13. **Tree pivots (S).** An option to centre the bake on the trunk (Epic's "Center XY On Mesh Pivot"), which removes
     ghosting on trees whose canopy leans off-centre.
 

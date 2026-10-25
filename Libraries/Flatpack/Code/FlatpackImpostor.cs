@@ -66,6 +66,18 @@ public sealed class FlatpackImpostor : GameResource
 	/// </summary>
 	[Property, ReadOnly] public float ThinDetail { get; set; } = 1.0f;
 
+	/// <summary>
+	/// Quality level the bake was made at (Low, Medium, High, Ultra or Custom).
+	/// </summary>
+	[Property, ReadOnly] public string QualityLevel { get; set; }
+
+	/// <summary>
+	/// Nearest distance, in bounding radii, from which the baker measured the card matching its model: at most 15% of
+	/// pixels clearly different from there out to 16 radii. 0 when not measured, -1 when it never got there.
+	/// <see cref="FlatpackRenderer"/>'s automatic swap distance never goes closer than this.
+	/// </summary>
+	[Property, ReadOnly] public float HoldsUpFrom { get; set; }
+
 	Model _cardModel;
 	Material _cardMaterial;
 

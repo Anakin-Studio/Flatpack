@@ -15,6 +15,17 @@ public static class FlatpackCard
 	/// </summary>
 	public static Model Build( FlatpackImpostor impostor )
 	{
+		return Model.Builder
+			.WithName( $"flatpack_card_{impostor.ResourceName}" )
+			.AddMesh( BuildMesh( impostor ) )
+			.Create();
+	}
+
+	/// <summary>
+	/// The card quad as a mesh, for adding to another model (the card as the last LOD of a model).
+	/// </summary>
+	public static Mesh BuildMesh( FlatpackImpostor impostor )
+	{
 		var c = impostor.Center;
 		var r = impostor.Radius;
 
@@ -39,10 +50,6 @@ public static class FlatpackCard
 		// Culling has to use the whole bounding sphere: the card can be at any angle around it, and the shader
 		// places it on the sphere's front face.
 		mesh.Bounds = BBox.FromPositionAndSize( c, r * 2.0f );
-
-		return Model.Builder
-			.WithName( $"flatpack_card_{impostor.ResourceName}" )
-			.AddMesh( mesh )
-			.Create();
+		return mesh;
 	}
 }

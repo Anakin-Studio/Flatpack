@@ -5,6 +5,58 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: Swap where the card looks right, bake check calibrated by eye (iteration 6, part 1)
+
+- Change:
+  - Bake check: also measures structural similarity (SSIM, which sees blur). A card holds up where its difference is
+    no more than 0.10 above its own floor far away (`HoldsUpExcess`), and no more than 25% of pixels are clearly
+    wrong. Calibrated against a person's judgement of the knight (8 radii), tree (6 to 8) and chair (6).
+  - Flatpack Renderer: new Swap When It Looks Right (on) and Minimum Swap Radii (6). Auto mode swaps at the bake's
+    measured distance instead of a fixed 30 radii; unmeasured bakes keep 30.
+  - Auto quality now steps up until the bake holds up from the target distance (capped at 16 radii).
+  - New editor API `FlatpackLodModel`: builds a model whose LODs are the source model's first three (original
+    materials) and then the card, saves it as a compiled model next to the bake, and loads it back. The engine and the
+    Clutter system swap to the card by themselves. No button yet. `FlatpackCard.BuildMesh` exposes the card quad.
+  - `Benchmarks/iteration-6-real-scenes` (in progress): the calibration sheet and the swap-distance study against
+    native. README: Where to swap section, renderer and settings tables.
+- Files: `Libraries/Flatpack/Editor/FlatpackQualityCheck.cs`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `Libraries/Flatpack/Code/FlatpackRenderer.cs`, `Libraries/Flatpack/Editor/FlatpackLodModel.cs` (new),
+  `Libraries/Flatpack/Code/FlatpackCard.cs`; `Benchmarks/iteration-6-real-scenes/**`, `Benchmarks/README.md`,
+  `Benchmarks/iteration-5-measure-and-auto/README.md`; `README.md`; `.gitignore` (local Orion test copy)
+- Testing: editor. Calibrated check on the seven-model test set: chair 6, knight 8, tree 8, dragon 8, fern 6, weed
+  tree 12, fence never. Swap study: 30 play-mode runs, 2,500 copies each. LOD model: built, saved, reloaded with its
+  LOD table intact; the engine swaps between 29 and 31 radii as converted; Clutter in play mode draws real models near
+  and cards far. Compiles clean.
+
+## 2026-10-24: Supersampled bakes, bake check, Auto quality (iteration 5)
+
+- Change:
+  - Bakes render each view 2x larger and average down (new setting Supersample, default 2), so thin parts bake as
+    partial coverage.
+  - Ultra is now 12 x 12 views at 3072 with 32 search steps (36 MB; was 24 x 24 at 4096, 64 MB). New atlas size 3072.
+  - New `FlatpackQualityCheck`: after a bake (setting Measure Quality, on by default) the model and the card are
+    rendered in a private scene from four sides at ten distances and compared on shape and colour. The `.fpack` stores
+    `QualityLevel` and `HoldsUpFrom`; the Flatpack Renderer's automatic swap distance never goes closer than
+    `HoldsUpFrom`, and its inspector shows the level, where it holds up and where it swaps.
+  - New quality level Auto (setting Auto Target Radii, default 30): bake at Low, check, step up until the card holds up
+    from the target distance outward; if none does, keep the closest.
+  - Impostor shader: optional Continuity dial (off by default) that accepts hits where the ray crosses a smooth
+    surface between steps; in debug views the card dithers its coverage instead of drawing every partly covered texel,
+    so the bake check sees the same shape the game shows.
+  - `Benchmarks/iteration-5-measure-and-auto`: error heatmaps, a shape score, a seven-model failure test set, 13 ideas
+    tried with results, iteration 4 against 5, the check against the harness, Auto's picks.
+- Files: `Libraries/Flatpack/Editor/FlatpackQualityCheck.cs` (new), `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `Libraries/Flatpack/Editor/FlatpackBakeSettings.cs`, `Libraries/Flatpack/Editor/FlatpackRendererEditor.cs`,
+  `Libraries/Flatpack/Code/FlatpackImpostor.cs`, `Libraries/Flatpack/Code/FlatpackRenderer.cs`,
+  `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (and `.shader_c`); `Benchmarks/iteration-5-measure-and-auto/**`,
+  `Benchmarks/README.md`; `README.md`; `docs/ROADMAP.md`
+- Testing: editor. About 250 harness evaluations on the seven-model set; every idea A/B'd against its own batch's
+  Medium bake. Medium 2 to 3.4 points fewer wrong pixels at 1.5 to 4 radii (fence apart); new Ultra 5 to 6 points
+  better up close, 3 points worse at 16 radii. Bake check against the full harness: correlation 0.87 over 140 points.
+  Auto run on all seven at targets 30 and 8. GPU cost unchanged within noise in a same-session A/B. Compiles clean.
+  Not checked by eye: the new inspector line (the screen capture came back blank).
+  Dropped after measuring: smooth hit position, thicker shell, facing weights, soft coverage, 128 and 341 px views.
+
 ## 2026-10-24: Quality levels and early depth test (iteration 4)
 
 - Change:

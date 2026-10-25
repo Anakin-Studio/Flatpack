@@ -344,6 +344,12 @@ PS
 	// one and a half search steps). Thinner keeps silhouettes and gaps crisp; thicker closes holes on very thin parts.
 	float g_flFlatpackThickness < Default( 0.06 ); Range( 0.0, 0.5 ); UiGroup( "Flatpack,10/72" ); >;
 
+	// Also count a hit when the ray crosses the surface between two steps and the surface height there changes by less
+	// than this fraction of the bounds diameter, however deep the ray lands. Surfaces seen at a low angle (a seat, a
+	// plinth) change height steeply in a view and otherwise slip past the shell test as holes. 0 turns it off. Measured in
+	// iteration 5: 0.25 helps solid statues a little and costs twigs a little, so it's off by default.
+	float g_flFlatpackContinuity < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/73" ); >;
+
 	// How much the baked sky visibility (bake option "Bake Self Shadow") darkens the card: fully for ambient light, half
 	// as much for direct light. 0 matches the real model, which gets no such occlusion in-engine; raise it for dense
 	// foliage that should keep a dark interior at a distance.
@@ -476,19 +482,36 @@ PS
 			// to background, or a gap between leaves) and keeps searching, instead of stretching that edge into streaks.
 			// Never thinner than one step, or the search could step clean over a surface.
 			float thickness = max( g_flFlatpackThickness, 1.5 / steps ) * 2.0 * rad;
+			float continuity = g_flFlatpackContinuity * 2.0 * rad;
+			bool crossed = false;
+
+			// The ray enters the bounds above the surface (or over background, which reads as the far plane).
+			float gapPrev = FlatpackDepthGap( frame, uvP + uvPerT * tFront, heightP + denom * tFront, n, rad, depthLod );
+			float surfPrev = ( heightP + denom * tFront ) - gapPrev;
 
 			[loop]
 			for ( int k = 1; k <= steps; k++ )
 			{
 				float t = lerp( tFront, tBack, (float)k / steps );
-				float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, heightP + denom * t, n, rad, depthLod );
+				float rayH = heightP + denom * t;
+				float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, rayH, n, rad, depthLod );
 				if ( gap <= 0.0 && gap >= -thickness )
 				{
 					hit = true;
 					break;
 				}
 
+				float surf = rayH - gap;
+				if ( continuity > 0.0 && gap <= 0.0 && gapPrev > 0.0 && abs( surf - surfPrev ) < continuity )
+				{
+					hit = true;
+					crossed = true;
+					break;
+				}
+
 				tPrev = t;
+				gapPrev = gap;
+				surfPrev = surf;
 			}
 
 			// Binary refinement between the last step in front of the surface and the first one behind it. Still point
@@ -502,12 +525,13 @@ PS
 				{
 					float tm = ( tIn + tOut ) * 0.5;
 					float gm = FlatpackDepthGap( frame, uvP + uvPerT * tm, heightP + denom * tm, n, rad, depthLod );
-					if ( gm <= 0.0 && gm >= -thickness )
+					if ( gm <= 0.0 && ( crossed || gm >= -thickness ) )
 						tOut = tm;
 					else
 						tIn = tm;
 				}
 				tHit = tOut;
+
 			}
 		}
 
@@ -581,7 +605,10 @@ PS
 		float coverage = alpha;
 		#if ( S_MODE_DEPTH == 0 )
 			coverage = saturate( ( alpha - g_flFlatpackAlphaClip ) / max( fwidth( alpha ), 1e-4 ) + 0.5 );
-			clip( coverage - 1.0 / 255.0 );
+
+			// Debug views (the baker's quality check renders through Albedo) write full alpha, so alpha-to-coverage
+			// can't act there; dither instead, which averages to the same coverage.
+			clip( coverage - ( ToolsVisMode != 0 ? FlatpackBayer4( i.vPositionSs.xy ) : 1.0 / 255.0 ) );
 		#else
 			clip( alpha - g_flFlatpackAlphaClip );
 		#endif
