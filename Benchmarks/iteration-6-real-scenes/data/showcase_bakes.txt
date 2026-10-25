@@ -1,0 +1,16 @@
+0|pr/small/small_01/tree_small_01.vmdl|802|572544|6
+1|pr/small/tree_small_03.vmdl|748|534024|8
+2|pr/bobleponge_krustykrab_car.vmdl|114|96792|8
+3|models/sand_valley/dead_bush.vmdl|395|7320|8
+4|models/props/nature/weeds/weed_tree_small.vmdl|756|1951|12
+5|models/decorations/details/flower_bush_0.vmdl|359|650|1.5
+6|pr/lamp_a.vmdl|34|4996|4
+7|pr/woman_statue_01.vmdl|9|10925|8
+8|materials/3dmodels/anubis reclini.vmdl|8|10456|6
+9|materials/3dmodels/anubis_statue_bronze.vmdl|7|11748|6
+10|models/the_barrel/the_barrel_lod0.vmdl|19|3684|12
+11|pr/jaguar_statue_01.vmdl|8|4742|2
+12|pr/horse_statue_01.vmdl|11|2964|6
+13|pr/big_plant_pot_01.vmdl|14|1568|1.5
+14|pr/dragon_statue.vmdl|6|3436|8
+15|pr/knight_statue_01.vmdl|5|3798|8

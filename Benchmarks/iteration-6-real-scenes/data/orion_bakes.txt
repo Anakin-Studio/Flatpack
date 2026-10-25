@@ -1,0 +1,59 @@
+0|pr/small/tree_small_03.vmdl|126|293609|8
+1|pr/small/small_02/tree_small_02.vmdl|65|273908|4
+2|pr/small/small_01/tree_small_01.vmdl|64|263066|6
+3|models/hospital/hospital_bed/hospital_bed.vmdl|7|974642|8
+4|models/hospital/hospital_stretcher/hospital_stretcher.vmdl|3|949440|8
+5|models/office chair/office_chair.vmdl|134|15378|6
+6|models/caged_lights02/caged_light03.vmdl|221|3398|12
+7|models/props/bulkhead_light/bulkhead_light.vmdl|164|3733|8
+8|models/industrial_lights01/industrial_light01.vmdl|427|1176|8
+9|models/props/pendant_light/pendant_light.vmdl|100|3788|1.5
+10|models/props/trim_sheets/shelving/industrial_ shelving/industrial_ shelving_01.vmdl|111|2816|8
+11|models/props/electrical_panels/combned_consumer_unit.vmdl|30|10192|8
+12|models/items/bed.vmdl|54|4610|6
+13|models/props/locker/locker_door.vmdl|198|1229|6
+14|models/props_office/monitor01.vmdl|114|1598|2
+15|models/unity stuff/1/shelf/shelf_a.vmdl|10|12060|8
+16|models/keyboard.vmdl|57|1906|12
+17|models/rust_props/electrical/control_panels_tall_a.vmdl|11|9716|6
+18|models/sbox_props/street_lamp/street_lamp_short.vmdl|66|1523|6
+19|models/ammo/nailammo/dmc_nailammo.vmdl|20|4878|8
+20|models workshop/rtx/military_radio.vmdl|7|13333|8
+21|models/truss_large.vmdl|9|9180|12
+22|models/cafeteriatable.vmdl|10|6156|8
+23|models/rust_props/medical/medical_table.vmdl|12|4384|6
+24|super_computer.vmdl|2|24500|8
+25|models/store/two-sided shelf/twosidedshelf.vmdl|24|2008|3
+26|models/old-computer/computer.vmdl|26|1544|1.5
+27|models/sbox_props/street_lamp/street_lamp_tall.vmdl|25|1523|12
+28|models/sbox_props/fire_extinguisher/fire_extinguisher.vmdl|17|2076|8
+29|models/props/plastic_crate/plastic_crate_02.vmdl|12|2796|8
+30|models/props/weapon_crate/weapon_crate_stacka.vmdl|5|6238|8
+31|models/objects/phone_a.vmdl|6|4786|8
+32|models/props/wet_floor_sign/wet_floor_sign.vmdl|11|2448|8
+33|models/mop_bucket/mop_bucket.vmdl|7|3672|2
+34|models/props/electrical_panels_industrial/electrical_industrial_panel_2.vmdl|6|3766|6
+35|models/props/bed.vmdl|10|1664|8
+36|pr/gta5_apa_mp_h_acc_plant_tall_01.vmdl|9|1832|8
+37|vendingmachine/vending machine.vmdl|5|3032|1.5
+38|models/props/health_pickup/health_pickup.vmdl|3|4950|6
+39|models/kitchen/bucket01/bucket01.vmdl|5|2808|12
+40|models/rust_props/electrical/control_panels_tall_c.vmdl|2|7012|6
+41|models/props/concrete_barrier_damaged/concrete barrier_damaged.vmdl|7|1532|12
+42|models/vintage_crutches_01.vmdl|2|5348|8
+43|models/rust_props/medical/autopsy_table.vmdl|2|5141|8
+44|props/industrial_tanker.vmdl|1|9350|6
+45|models/props/trim_sheets/utility/step_ladder_02.vmdl|4|1916|12
+46|models/rust_props/industrial/vent_large_fan.vmdl|3|2444|12
+47|models/huey/scp_unity/scp/173_v1.vmdl|1|6630|8
+48|models/rust_props/security/security_speaker_small_b.vmdl|3|2200|1.5
+49|models/props/sconce_wall_light/sconce_wall_light.vmdl|2|3268|4
+50|models/rust_props/security/security_speaker_small_c.vmdl|3|2176|4
+51|modells/net/volleyball_net.vmdl|1|6492|-1
+52|models/rust_props/medical/iv_stand.vmdl|1|5575|8
+53|models/props/electrical_panels_industrial/electrical_industrial_panel_1.vmdl|3|1548|8
+54|models/props_interiors/vendingmachinesoda01a.vmdl|1|4111|8
+55|models/shower/shower.vmdl|2|1932|2
+56|models/rust_props/security/security_speaker_small_a.vmdl|1|2200|3
+57|models/props/electrical_panels/3phase_unit.vmdl|1|2097|6
+58|models/scp_294/scp_294.vmdl|1|1836|4

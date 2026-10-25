@@ -115,7 +115,11 @@ public sealed class FlatpackSceneOptimizer : Dialog
 		// Quality for the bakes this window makes. Shares the bake window's saved settings, so both stay in step.
 		var settings = EditorCookie.Get( "Flatpack.BakeSettings", new FlatpackBakeSettings() ) ?? new FlatpackBakeSettings();
 		var serializedSettings = settings.GetSerialized();
-		serializedSettings.OnPropertyChanged += _ => EditorCookie.Set( "Flatpack.BakeSettings", settings );
+		serializedSettings.OnPropertyChanged += _ =>
+		{
+			EditorCookie.Set( "Flatpack.BakeSettings", settings );
+			UpdateSummary();
+		};
 		var quality = new ControlSheet();
 		quality.AddObject( serializedSettings, p => p.Name == nameof( FlatpackBakeSettings.Quality ) );
 		Layout.Add( quality );
@@ -192,6 +196,40 @@ public sealed class FlatpackSceneOptimizer : Dialog
 	/// <summary>
 	/// The recommendation rules. Kept in one place so the reasons in the list always match the decision.
 	/// </summary>
+	/// <summary>
+	/// Typical time to bake one model (including the quality check after it) and the video memory its atlases use, by
+	/// quality level. Measured on an RTX 3090 in iterations 4 to 6; Auto bakes Low first and climbs, so it's a range.
+	/// </summary>
+	static (float Seconds, float MaxSeconds, float Megabytes) BakeCost( FlatpackBakeSettings settings )
+	{
+		// Supersampling renders each view larger; 2 is the default the times below were measured at.
+		var ss = Math.Clamp( settings.Supersample, 1, 4 );
+		var time = ss switch { 1 => 0.75f, 2 => 1.0f, 3 => 1.3f, _ => 1.7f };
+		if ( settings.BakeSelfShadow )
+			time *= 3.0f;
+
+		return settings.Quality switch
+		{
+			FlatpackQuality.Low => (3 * time, 3 * time, 4),
+			FlatpackQuality.Medium => (6 * time, 6 * time, 16),
+			FlatpackQuality.High => (16 * time, 16 * time, 64),
+			FlatpackQuality.Ultra => (12 * time, 12 * time, 36),
+			FlatpackQuality.Auto => (4 * time, 40 * time, 16),
+			_ => CustomCost( settings, time ),
+		};
+	}
+
+	static (float, float, float) CustomCost( FlatpackBakeSettings settings, float time )
+	{
+		var (grid, atlas, _) = settings.Resolve();
+		var size = (float)(int)atlas;
+		var megabytes = size * size * 3 * 4 / 3 / (1024 * 1024);
+		var seconds = (2.0f + 4.0f * (size / 2048) * (size / 2048) * MathF.Max( 1, grid / 12.0f )) * time;
+		return (seconds, seconds, megabytes);
+	}
+
+	static string Duration( float seconds ) => seconds < 90 ? $"{seconds:0} s" : $"{seconds / 60:0.#} min";
+
 	/// <summary>
 	/// Triangles in the model's most detailed LOD, every mesh and draw call. <c>Model.GetIndexCountForLod</c> counts only
 	/// the first draw call, which undercounts models with several materials (a tree's bark and leaves: 293,609 of 534,024).
@@ -319,9 +357,23 @@ public sealed class FlatpackSceneOptimizer : Dialog
 		var before = picked.Sum( e => (long)e.Triangles * (e.Instances - e.Flatpacked) );
 		var toBake = picked.Count( e => e.Impostor is null );
 
-		_summary.Text = picked.Length == 0
-			? "Nothing selected."
-			: $"{picked.Length} model(s), {instances:n0} object(s). Past the swap distance they draw {instances * 2:n0} triangles instead of {before:n0}. {toBake} need baking first (a few seconds each).";
+		if ( picked.Length == 0 )
+		{
+			_summary.Text = "Nothing selected.";
+			_apply.Enabled = false;
+			return;
+		}
+
+		var settings = EditorCookie.Get( "Flatpack.BakeSettings", new FlatpackBakeSettings() ) ?? new FlatpackBakeSettings();
+		var cost = BakeCost( settings );
+		var bakeText = toBake == 0
+			? "Everything is baked already."
+			: cost.MaxSeconds > cost.Seconds
+				? $"{toBake} to bake at {settings.Quality}: about {Duration( toBake * cost.Seconds )} (up to {Duration( toBake * cost.MaxSeconds )}), adding about {toBake * cost.Megabytes:n0} MB of video memory."
+				: $"{toBake} to bake at {settings.Quality}: about {Duration( toBake * cost.Seconds )}, adding about {toBake * cost.Megabytes:n0} MB of video memory.";
+
+		_summary.Text = $"{picked.Length} model(s), {instances:n0} object(s). Far away they draw {instances * 2:n0} triangles instead of {before:n0}. {bakeText} " +
+			"Gains are biggest where you can see far (forests, open maps); in closed rooms the cost is usually lights and draw calls.";
 
 		_apply.Enabled = picked.Length > 0 && _cancel is null;
 	}

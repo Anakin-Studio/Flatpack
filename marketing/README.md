@@ -21,7 +21,7 @@ with the real model beside the card, using licensed models only.
 | `package_square_512.png` | 512 x 512 | Square thumbnail | The real tree and its card, 572,544 triangles against 2 |
 | `package_wide_910x512.png` | 910 x 512 | Wide thumbnail | The same, labelled |
 | `package_tall_512x910.png` | 512 x 910 | Tall thumbnail | The same, stacked |
-| `screenshot_1_tree.png` | 1920 x 1080 | Screenshot | Real tree and card side by side from 6 bounding radii, Ultra bake |
+| `screenshot_1_tree.png` | 1920 x 1080 | Screenshot | Real tree and card side by side from 6 bounding radii, Ultra bake with baked self-shadowing (brightness within 2% of the real tree) |
 | `screenshot_2_forest.png` | 1920 x 1080 | Screenshot | 2,500 trees, split screen: native models left, Flatpack right, with GPU times |
 | `screenshot_3_swap_chart.png` | 1920 x 1080 | Screenshot | GPU time against swap distance for a heavy, a medium and a light model, with native |
 | `flatpack_trailer_1080p.mp4` | 1920 x 1080, 19 s | Video | Title, the tree turning (real against card), the fly-in over the forest split screen, end card |

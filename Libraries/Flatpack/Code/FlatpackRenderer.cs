@@ -103,21 +103,32 @@ public sealed class FlatpackRenderer : Component, Component.ExecuteInEditor
 	[Property, Range( 0, 20000 ), ShowIf( nameof( AutoSwapDistance ), false )] public float SwapDistance { get; set; } = 2000.0f;
 
 	/// <summary>
-	/// The swap distance in use: <see cref="SwapDistance"/>, or the automatic one.
+	/// The swap distance in use: <see cref="SwapDistance"/>, or the automatic one, then scaled by the global
+	/// <see cref="FlatpackSystem.Level"/> (a game's graphics setting).
 	/// </summary>
 	public float EffectiveSwapDistance
 	{
 		get
 		{
+			var (levelScale, levelMinimum) = FlatpackSystem.LevelScaling;
+			if ( float.IsPositiveInfinity( levelScale ) )
+				return float.PositiveInfinity;
+
 			if ( !AutoSwapDistance || Impostor is null )
-				return SwapDistance;
+				return SwapDistance * levelScale;
 
 			var scale = WorldScale;
+			var radius = Impostor.Radius * MathF.Max( scale.x, MathF.Max( scale.y, scale.z ) );
 			var measured = Impostor.HoldsUpFrom > 0.0f;
 			var factor = SwapWhenItLooksRight && measured
 				? MathF.Max( Impostor.HoldsUpFrom, MinimumSwapRadii )
 				: MathF.Max( AutoDistanceFactor, Impostor.HoldsUpFrom );
-			return Impostor.Radius * MathF.Max( scale.x, MathF.Max( scale.y, scale.z ) ) * factor;
+
+			// A lower graphics level swaps earlier, but never closer than its own minimum.
+			factor *= levelScale;
+			if ( levelMinimum > 0.0f )
+				factor = MathF.Max( factor, levelMinimum );
+			return radius * factor;
 		}
 	}
 

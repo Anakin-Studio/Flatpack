@@ -1,0 +1,8 @@
+{"level":"Off","round":1,"swap":0,"info":{"count":2500,"cards":0},"gpu_samples":" 30.82 32.12 31.92 31.77 30.72 31.63","render":{"tris": 89988519, "draws": 522}}
+{"level":"Balanced","round":1,"swap":0,"info":{"count":2500,"cards":2497},"gpu_samples":" 17.32 17.21 16.49 17.72 17.29 18.33","render":{"tris": 8141905, "draws": 140}}
+{"level":"Balanced","round":2,"swap":0,"info":{"count":2500,"cards":2497},"gpu_samples":" 17.29 16.49 16.48 23.7 25.05 24.61","render":{"tris": 8141905, "draws": 137}}
+{"level":"Off","round":2,"swap":0,"info":{"count":2500,"cards":0},"gpu_samples":" 64.82 56.43 63.23 62.9 62.17 62.01","render":{"tris": 89988519, "draws": 490}}
+{"level":"Off","round":3,"swap":0,"info":{"count":2500,"cards":0},"gpu_samples":" 61.5 59.71 59.86 60.89 47.76 31.17","render":{"tris": 89988519, "draws": 522}}
+{"level":"Balanced","round":3,"swap":0,"info":{"count":2500,"cards":2497},"gpu_samples":" 17.16 17.35 17.59 17.18 17.06 17.1","render":{"tris": 8141905, "draws": 141}}
+{"level":"Balanced","round":4,"swap":0,"info":{"count":2500,"cards":2497},"gpu_samples":" 16.97 17.15 17.01 17.03 17.01 17.13","render":{"tris": 8141905, "draws": 137}}
+{"level":"Off","round":4,"swap":0,"info":{"count":2500,"cards":0},"gpu_samples":" 31.91 32.27 32.64 33 32.25 31.98","render":{"tris": 89988519, "draws": 490}}

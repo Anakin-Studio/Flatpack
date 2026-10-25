@@ -5,6 +5,18 @@ looks like the model from every angle, lights like it, and casts its shadow.
 
 ![A 572,544-triangle tree beside its Flatpack card: one face](docs/media/flatpack_hero.png)
 
+<sub>Same camera and light on both sides. Card: Ultra bake with baked self-shadowing (Sky Occlusion 1), which brings
+its brightness within 2% of the real tree.</sub>
+
+## Real model up close, card at a distance
+
+![The real tree and its card from 6 to 48 bounding radii, at true size, with the hybrid's GPU time](docs/media/flatpack_distance.png)
+
+Each tile is the size the tree really is on a 1080p screen. Up close you get your real model; from the distance where
+the card looks the same (measured after every bake, 6 bounding radii for this tree), the card takes over. A forest of
+2,500 of these trees drew in 17 to 21 ms with the hybrid against 32 to 62 ms as real models only (four runs each on an
+RTX 3090; details in [iteration 6](Benchmarks/iteration-6-real-scenes/README.md#real-model-up-close-card-far)).
+
 Far from the camera, a 572,544-triangle tree and a 2-triangle card look the same, and the card costs almost nothing to draw.
 Flatpack renders the model from 144 directions into texture atlases, then draws one quad that picks the three views
 nearest yours, traces into their baked depth so they line up, and blends them as you walk around it.
@@ -84,7 +96,7 @@ swaps there. The check was calibrated against a person's judgement
 ([iteration 6](Benchmarks/iteration-6-real-scenes/README.md#does-it-look-right-to-a-person)).
 
 ![Quality levels by distance, and flicker against the real model](Benchmarks/iteration-4-quality-levels/media/presets_quality.png)
-![The chair at every level while the camera circles](Benchmarks/iteration-4-quality-levels/media/presets_orbit_chair.gif)
+![The chair at every level while the camera circles (current bakes)](Benchmarks/iteration-6-real-scenes/media/presets_orbit_chair.gif)
 
 More views don't reduce flicker: at every level the card flickers as much as the real model does, and no more. What
 changes is sharpness. Ultra's extra search steps keep thin parts up close (the chair holds up from 3 radii instead of
@@ -112,6 +124,52 @@ Heavy models gain the most, and only if the card takes over as soon as it looks 
 saved almost nothing, because its own LODs already simplify the far trees. Very light models are cheaper as real
 models. So the Flatpack Renderer swaps at the bake's measured distance by default, and the scene optimiser marks light
 models as low gain. Details: [`Benchmarks/iteration-6-real-scenes`](Benchmarks/iteration-6-real-scenes/README.md).
+
+## On real maps
+
+![GPU time along a fly-through of a real game map](Benchmarks/iteration-6-real-scenes/media/flythrough_orion_surface.png)
+
+The camera flies a fixed path and every frame's GPU time is recorded, native against Flatpack (RTX 3090):
+
+| Map | Native average | Flatpack average | Native worst | Flatpack worst |
+|---|---|---|---|---|
+| Showcase map (7,966 objects, licensed models) | 22.9 ms | **19.9 ms** | 57.6 ms | 55.0 ms |
+| Real game map, surface forests | 30.3 ms | **22.5 ms** | 55.2 ms | **47.0 ms** |
+| Real game map, indoors | 19.4 ms | **16.2 ms** | 34.3 ms | **25.7 ms** |
+
+Gains are biggest where you can see far. In closed rooms the cost is lights and draw calls, and Flatpack changes
+little. The real map is Orion SCP-RP's Site 67; details and the other charts in
+[`Benchmarks/iteration-6-real-scenes`](Benchmarks/iteration-6-real-scenes/README.md).
+
+## Graphics settings
+
+Tie Flatpack to your game's graphics presets: high presets show real models everywhere, low ones lean on cards. One
+line, from wherever your settings menu applies a preset:
+
+```csharp
+// Ultra / High: real models only. Medium: the default. Low: swap earlier. Lowest: swap as early as possible.
+FlatpackSystem.Level = preset switch
+{
+	"Ultra" or "High" => FlatpackLevel.Off,
+	"Medium" => FlatpackLevel.Balanced,
+	"Low" => FlatpackLevel.Performance,
+	_ => FlatpackLevel.Maximum,
+};
+```
+
+Every Flatpack Renderer follows it within a few frames; nothing re-bakes. Measured on the 2,500-tree forest (534,024
+triangles a tree, RTX 3090):
+
+| Level | Swaps at | GPU | Triangles drawn |
+|---|---|---|---|
+| Off | never | 31.4 ms | 73.5 million |
+| Balanced (default) | where the card looks right | 18.0 ms | 14.8 million |
+| Performance | 0.6 times that, from 3 radii | 16.6 ms | 7.3 million |
+| Maximum | 0.35 times that, from 1.5 radii | 15.7 ms | 11,700 |
+
+Past Balanced the gains are small for this forest, because the near trees already cost little and the cards' own
+drawing becomes the floor; scenes with heavy props close to the camera gain more. Lower levels show cards closer, where
+they look softer than the model.
 
 ## Install
 

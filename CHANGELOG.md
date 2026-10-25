@@ -5,6 +5,34 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: Real maps, fly-throughs, graphics levels, bake estimates (iteration 6, part 2)
+
+- Change:
+  - `FlatpackSystem.Level` (`FlatpackLevel` Off, Balanced, Performance, Maximum): one global setting for a game's
+    graphics presets. Scales every Flatpack Renderer's swap distance (Off: never swap; Performance 0.6x from 3 radii;
+    Maximum 0.35x from 1.5 radii); Force Model and Force Card ignore it.
+  - Scene optimiser: the summary estimates bake time and added video memory for the chosen quality level (measured per
+    level, adjusted for supersampling and self-shadow), refreshes when the Quality picker changes, and says where gains
+    are biggest.
+  - New `scenes/flatpack_showcase.scene`: 7,966 objects from 36 licensed sbox.game models (forests, rocks, a statue
+    plaza, a road with cars). Its bakes aren't in git; run Optimize Scene after cloning.
+  - Iteration 6 benchmarks: a real game map (Orion SCP-RP Site 67, local copy, numbers only), frame-by-frame
+    fly-throughs on the showcase map and the real map, graphics levels, the brightness match, the chair GIF re-rendered
+    from current bakes.
+  - README: a distance comparison right under the hero (real tree against card at 6, 12, 24 and 48 radii at true size,
+    with what the hybrid draws at each, and 2,500 trees all real against hybrid: 32 to 62 ms against 17 to 21 ms).
+  - README: new hero with matched camera, light and brightness (Ultra bake with baked self-shadowing, Sky Occlusion 1;
+    wireframe as an inset), turntable GIF from the same bake, On real maps and Graphics settings sections. Marketing
+    thumbnails, screenshots and trailer rebuilt from the matched bakes.
+- Files: `Libraries/Flatpack/Code/FlatpackSystem.cs`, `Libraries/Flatpack/Code/FlatpackRenderer.cs`,
+  `Libraries/Flatpack/Editor/FlatpackSceneOptimizer.cs`; `Assets/scenes/flatpack_showcase.scene` (new);
+  `Benchmarks/iteration-6-real-scenes/**`, `Benchmarks/README.md`; `README.md`; `docs/media/*`; `marketing/*`;
+  `.gitignore` (showcase bakes)
+- Testing: editor. Fly-throughs: 12 recorded runs (showcase 50 s, real map surface and indoors 30 s each, native and
+  Flatpack twice, alternating), about 36,000 frames. Real map viewpoints: 80 runs. Graphics levels: 8 play-mode runs
+  on the 2,500-tree forest. Brightness measured over the tree's pixels. Optimiser summary read back in the editor.
+  Compiles clean.
+
 ## 2026-10-25: sbox.game kit from the latest bakes, triangle counts fixed
 
 - Change:

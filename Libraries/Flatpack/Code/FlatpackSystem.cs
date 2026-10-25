@@ -5,6 +5,25 @@ using Sandbox;
 namespace Flatpack;
 
 /// <summary>
+/// How hard Flatpack works, for a game's graphics settings: high quality presets turn it off, low ones lean on it.
+/// Set <see cref="FlatpackSystem.Level"/>; every Flatpack Renderer follows it within a few frames, nothing re-bakes.
+/// </summary>
+public enum FlatpackLevel
+{
+	/// <summary>Real models everywhere; cards never show (a game's High or Ultra preset).</summary>
+	Off,
+
+	/// <summary>Swap where the bake was measured to look like the model (the default; a game's Medium).</summary>
+	Balanced,
+
+	/// <summary>Swap at 0.6 times the distance, from 3 bounding radii (a game's Low).</summary>
+	Performance,
+
+	/// <summary>Swap at 0.35 times the distance, from 1.5 bounding radii (a game's lowest preset or weak hardware).</summary>
+	Maximum,
+}
+
+/// <summary>
 /// Runs the model/card distance check for every <see cref="FlatpackRenderer"/> in the scene.
 /// </summary>
 /// <remarks>
@@ -14,6 +33,25 @@ namespace Flatpack;
 /// </remarks>
 public sealed class FlatpackSystem : GameObjectSystem<FlatpackSystem>
 {
+	/// <summary>
+	/// Global level for every Flatpack Renderer, meant to be driven by a game's graphics settings, for example
+	/// <c>FlatpackSystem.Level = FlatpackLevel.Performance;</c> on the Low preset. Applies to automatic and manual swap
+	/// distances alike; Force Model and Force Card modes ignore it.
+	/// </summary>
+	public static FlatpackLevel Level { get; set; } = FlatpackLevel.Balanced;
+
+	/// <summary>
+	/// What <see cref="Level"/> does to a swap distance: a multiplier, and the closest swap allowed in bounding radii
+	/// (0 = the renderer's own minimum). <see cref="FlatpackLevel.Off"/> pushes the swap out to infinity.
+	/// </summary>
+	public static (float Scale, float MinimumRadii) LevelScaling => Level switch
+	{
+		FlatpackLevel.Off => (float.PositiveInfinity, 0.0f),
+		FlatpackLevel.Performance => (0.6f, 3.0f),
+		FlatpackLevel.Maximum => (0.35f, 1.5f),
+		_ => (1.0f, 0.0f),
+	};
+
 	/// <summary>
 	/// Distance checks per frame. Lower spreads the work thinner but makes swaps lag behind a fast camera.
 	/// </summary>
