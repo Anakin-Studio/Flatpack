@@ -6,11 +6,11 @@ looks like the model from every angle, lights like it, and casts its shadow.
 ![A 572,544-triangle tree beside its Flatpack card: one face](docs/media/flatpack_hero.png)
 
 <sub>Same camera and light on both sides. Card: Ultra bake with baked self-shadowing (Sky Occlusion 1), which brings
-its brightness within 2% of the real tree.</sub>
+its brightness within 1% of the real tree.</sub>
 
 ## Real model up close, card at a distance
 
-![The knight from 1.5 to 24 bounding radii](Benchmarks/iteration-3-ten-models/media/distance_knight.png)
+![The knight from 1.5 to 24 bounding radii](docs/media/distance_knight.png)
 
 The real model on top, its card below, as the camera moves from 1.5 to 24 bounding radii. The numbers under each
 pair are the knight's height on a 1080p screen.
@@ -45,7 +45,7 @@ won't beat it. Method and raw numbers: [`Benchmarks/`](Benchmarks/README.md).
 
 ## Ten models, side by side
 
-![Ten models beside their Flatpack cards](Benchmarks/iteration-3-ten-models/media/comparison_grid.png)
+![Ten models beside their Flatpack cards](docs/media/comparison_grid.png)
 
 Real model on the left of each pair, the card on the right, at 4 bounding radii on a 1080p screen. All ten are
 public models from sbox.game (credits in [iteration 3](Benchmarks/iteration-3-ten-models/README.md#models)).
@@ -54,11 +54,12 @@ public models from sbox.game (credits in [iteration 3](Benchmarks/iteration-3-te
 
 The camera circles a chair: real model, Flatpack's first shader, and the current one.
 
-![Real model, first shader and current card while the camera circles](Benchmarks/iteration-3-ten-models/media/flicker_orbit_chair.gif)
-![Difference from the real model at every step of the orbit](Benchmarks/iteration-3-ten-models/media/flicker_chart_chair.png)
+![Real model, first shader and current card while the camera circles](docs/media/flicker_orbit_chair.gif)
+![Difference from the real model at every step of the orbit](docs/media/flicker_chart_chair.png)
 
-Across the full circle the current card stays 3.9 away from the real model on average (the first shader: 8.5), and
-that difference changes about half as much from one step to the next, which is what you see as flicker.
+Across the full circle the current card (Medium) stays 2.5 away from the real model on average (the first shader, on
+the same bake data: 6.3), and that difference changes less than half as much from one step to the next (3.4 against
+7.9), which is what you see as flicker.
 
 ### How close can you get?
 
@@ -104,12 +105,12 @@ model afterwards: the bake stores the distance from which the card looks like th
 swaps there. The check was calibrated against a person's judgement
 ([iteration 6](Benchmarks/iteration-6-real-scenes/README.md#does-it-look-right-to-a-person)).
 
-![Quality levels by distance, and flicker against the real model](Benchmarks/iteration-4-quality-levels/media/presets_quality.png)
-![The chair at every level while the camera circles (current bakes)](Benchmarks/iteration-6-real-scenes/media/presets_orbit_chair.gif)
+![Quality levels by distance, and flicker against the real model (iteration 4)](Benchmarks/iteration-4-quality-levels/media/presets_quality.png)
+![The chair at every level while the camera circles (current bakes)](docs/media/presets_orbit_chair.gif)
 
 More views don't reduce flicker: at every level the card flickers as much as the real model does, and no more. What
-changes is sharpness. Ultra's extra search steps keep thin parts up close (the chair holds up from 3 radii instead of
-16), and High's extra views and pixels help past 8 radii. Measurements, charts and the GPU tests behind the table:
+changes is sharpness. Ultra's extra search steps keep thin parts up close (the chair holds up from 3 radii at Ultra
+and 4 at Medium), and High's extra views and pixels help past 8 radii. Measurements, charts and the GPU tests behind the table:
 [`Benchmarks/iteration-4-quality-levels`](Benchmarks/iteration-4-quality-levels/README.md), and for supersampling, the
 new Ultra, the bake check and Auto: [`Benchmarks/iteration-5-measure-and-auto`](Benchmarks/iteration-5-measure-and-auto/README.md).
 

@@ -5,6 +5,18 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-26: README images re-rendered with iteration 8 bakes
+
+- Change: every README image that shows a card is re-rendered from fresh bakes with the current baker: the hero tree
+  (card brightness now within 1% of the tree, was 2%), the turntable, the knight distance sheet, the ten-model grid,
+  the chair orbit against the first shader (difference from the model 2.5 against 6.3, frame-to-frame jump 3.4 against
+  7.9), the tree distance sheet and the chair at every quality level. The new files live in `docs/media`; the
+  benchmark folders keep their own iteration's images. The tree distance sheet's GPU footer now says it was measured in
+  iteration 6. README text updated to the new numbers.
+- Files: `docs/media/*`, `README.md`
+- Testing: editor (all renders from the running editor; tree, chair at four levels, cactus, burger car and rock baked
+  fresh, the other grid models from the iteration 8 test-set bakes).
+
 ## 2026-10-25: Metres beside bounding radii
 
 - Change:
