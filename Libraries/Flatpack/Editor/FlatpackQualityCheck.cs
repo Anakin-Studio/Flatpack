@@ -78,9 +78,12 @@ public static class FlatpackQualityCheck
 		}
 
 		/// <summary>One line for status bars and the inspector.</summary>
+		/// <summary>The bake's bounding radius in world units, for showing distances in metres.</summary>
+		public float Radius { get; init; }
+
 		public string Summary => float.IsPositiveInfinity( HoldsUpFrom )
-			? "Doesn't match the model closely inside 16 radii: keep the swap distance generous."
-			: $"Looks like the model from {HoldsUpFrom:0.#} bounding radii outward.";
+			? $"Doesn't match the model closely inside 16 radii ({FlatpackMath.FormatMetres( 16.0f * Radius )}): keep the swap distance generous."
+			: $"Looks like the model from {HoldsUpFrom:0.#} bounding radii ({FlatpackMath.FormatMetres( HoldsUpFrom * Radius )}) outward.";
 
 		/// <summary>Share of clearly different pixels at <paramref name="radii"/>, interpolated between checked distances.</summary>
 		public float BadShareAt( float radii )
@@ -129,6 +132,8 @@ public static class FlatpackQualityCheck
 				camera = new GameObject( true, "camera" ).Components.Create<CameraComponent>();
 				camera.BackgroundColor = Color.White;
 			}
+
+			await WarmUpAsync( scene, camera, card, impostor );
 
 			// Each shot: framing for one distance and side, and the model's covered pixel count there.
 			var shots = new List<(Vector3 Position, Rotation Rotation, float Fov, Bitmap Target, long Model)>();
@@ -197,6 +202,31 @@ public static class FlatpackQualityCheck
 		return target.GetPixels32();
 	}
 
+	/// <summary>
+	/// Render the card a few times, a frame apart, before anything is measured. Right after a bake into a new folder the
+	/// new textures aren't on the GPU yet and the first renders read blank ones: in iteration 8 a chair measured from 12
+	/// radii straight after its first bake, and from 4 once its textures had loaded.
+	/// </summary>
+	static async Task WarmUpAsync( Scene scene, CameraComponent camera, ModelRenderer card, FlatpackImpostor impostor )
+	{
+		var target = new Bitmap( 64, 64, false );
+		var dir = new Vector3( 1.0f, 0.0f, 0.3f ).Normal;
+		for ( var i = 0; i < 20; i++ )
+		{
+			using ( scene.Push() )
+			{
+				camera.FieldOfView = 40.0f;
+				camera.WorldPosition = impostor.Center + dir * impostor.Radius * 4.0f;
+				camera.WorldRotation = Rotation.LookAt( -dir, Vector3.Up );
+				impostor.MarkAtlasesUsed();
+				card.Enabled = true;
+				scene.EditorTick( 0.0f, 0.0f );
+				camera.RenderToBitmap( target );
+			}
+			await Task.Delay( 30 );
+		}
+	}
+
 	/// <summary>Pixels clearly darker than the white background.</summary>
 	static long Covered( Color32[] pixels )
 	{
@@ -238,6 +268,8 @@ public static class FlatpackQualityCheck
 				camera.BackgroundColor = Color.Transparent;
 				camera.DebugMode = SceneCameraDebugMode.Albedo;
 			}
+
+			await WarmUpAsync( scene, camera, card, impostor );
 
 			var r = impostor.Radius;
 			foreach ( var k in Distances )
@@ -314,7 +346,7 @@ public static class FlatpackQualityCheck
 			holds = Distances[i];
 		}
 
-		return new Report { BadShare = bad.ToArray(), Difference = structure.ToArray(), Floor = floor, HoldsUpFrom = holds };
+		return new Report { BadShare = bad.ToArray(), Difference = structure.ToArray(), Floor = floor, HoldsUpFrom = holds, Radius = impostor.Radius };
 	}
 
 	/// <summary>

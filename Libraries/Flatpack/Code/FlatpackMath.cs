@@ -166,6 +166,136 @@ public static class FlatpackMath
 		return (center, MathF.Max( radius * 1.01f, 0.01f ));
 	}
 
+	/// <summary>
+	/// Metres in one world unit. s&amp;box units are inches, as in Source; the iteration 6 distance sheet ("6 radii (21 m)"
+	/// for a tree 140 units in radius) used the same conversion.
+	/// </summary>
+	public const float MetresPerUnit = 0.0254f;
+
+	/// <summary>A distance in world units, in metres.</summary>
+	public static float ToMetres( float units ) => units * MetresPerUnit;
+
+	/// <summary>
+	/// A distance in world units as a reader wants it next to bounding radii: one decimal under 10 m, whole metres from
+	/// there ("2.5 m", "21 m"). The inspector, the bake check summary and the benchmark sheets all use this.
+	/// </summary>
+	public static string FormatMetres( float units )
+	{
+		var metres = ToMetres( units );
+		return metres < 10.0f
+			? $"{metres.ToString( "0.0", System.Globalization.CultureInfo.InvariantCulture )} m"
+			: $"{metres.ToString( "0", System.Globalization.CultureInfo.InvariantCulture )} m";
+	}
+
+	/// <summary>
+	/// Columns the frame lookup texture reserves for image rectangles; the depth ranges sit this far to the right.
+	/// The shader's <c>FlatpackFrameFit</c> reads texel (x, y) and (x + 32, y).
+	/// </summary>
+	public const int FrameFitColumns = 32;
+
+	/// <summary>
+	/// The bounds one frame was baked with: where the object sits inside the bounding sphere's frame, and how deep.
+	/// </summary>
+	public struct FrameFit
+	{
+		/// <summary>Top-left corner of the frame's image rectangle, in the sphere-sized frame's 0..1 image coordinates (v down).</summary>
+		public Vector2 Min;
+
+		/// <summary>Bottom-right corner of the image rectangle.</summary>
+		public Vector2 Max;
+
+		/// <summary>Height of the nearest surface along the frame direction (toward its camera), in bounding radii.</summary>
+		public float Near;
+
+		/// <summary>Height of the furthest surface, in bounding radii. Always below <see cref="Near"/>.</summary>
+		public float Far;
+
+		/// <summary>The whole bounding sphere: what every frame used before iteration 8.</summary>
+		public static FrameFit Sphere => new() { Min = Vector2.Zero, Max = Vector2.One, Near = 1.0f, Far = -1.0f };
+	}
+
+	/// <summary>
+	/// Fit one frame to the points it sees: their image rectangle, grown by <paramref name="padTexels"/> of a
+	/// <paramref name="cellTexels"/>-wide frame on every side, and their depth range. Rounded outward to the 8-bit steps the
+	/// lookup texture stores, so the baker renders with exactly the bounds the shader reads back.
+	/// </summary>
+	public static FrameFit FitFrame( IReadOnlyList<Vector3> points, Vector3 center, float radius, Vector3 dir, int cellTexels, int padTexels )
+	{
+		if ( points is null || points.Count == 0 )
+			return FrameFit.Sphere;
+
+		FrameBasis( dir, out var right, out var up );
+		float minU = float.MaxValue, maxU = float.MinValue, minV = float.MaxValue, maxV = float.MinValue;
+		float near = float.MinValue, far = float.MaxValue;
+
+		foreach ( var p in points )
+		{
+			var rel = p - center;
+			var u = 0.5f + Vector3.Dot( rel, right ) / (2.0f * radius);
+			var v = 0.5f - Vector3.Dot( rel, up ) / (2.0f * radius);
+			var h = Vector3.Dot( rel, dir ) / radius;
+			minU = MathF.Min( minU, u ); maxU = MathF.Max( maxU, u );
+			minV = MathF.Min( minV, v ); maxV = MathF.Max( maxV, v );
+			near = MathF.Max( near, h ); far = MathF.Min( far, h );
+		}
+
+		// Padding: the rectangle maps onto cellTexels texels, padTexels of which on each side stay outside the object.
+		var grow = cellTexels > 2 * padTexels + 1 ? cellTexels / (float)(cellTexels - 2 * padTexels) : 1.0f;
+		var padU = (maxU - minU) * (grow - 1.0f) * 0.5f;
+		var padV = (maxV - minV) * (grow - 1.0f) * 0.5f;
+
+		var fit = new FrameFit
+		{
+			Min = new Vector2( minU - padU, minV - padV ),
+			Max = new Vector2( maxU + padU, maxV + padV ),
+			Near = near,
+			Far = far,
+		};
+		return DecodeFrameFit( EncodeFrameFit( fit ) );
+	}
+
+	/// <summary>
+	/// The two lookup texels for a frame: (left, top, right) and (bottom, near, far), each value one byte, rounded outward
+	/// so the stored bounds always contain the real ones. Alpha stays 255 (the PNG path drops colour under low alpha).
+	/// </summary>
+	public static (Color32 Rect, Color32 Depth) EncodeFrameFit( FrameFit fit )
+	{
+		int Down( float v ) => Math.Clamp( (int)MathF.Floor( v * 255.0f + 1e-3f ), 0, 255 );
+		int Up( float v ) => Math.Clamp( (int)MathF.Ceiling( v * 255.0f - 1e-3f ), 0, 255 );
+
+		int minU = Down( fit.Min.x ), maxU = Up( fit.Max.x );
+		int minV = Down( fit.Min.y ), maxV = Up( fit.Max.y );
+		int near = Up( (fit.Near + 1.0f) * 0.5f ), far = Down( (fit.Far + 1.0f) * 0.5f );
+
+		// Never let a frame collapse (a flat panel seen edge-on, a plane seen face-on): keep at least two steps each way.
+		(minU, maxU) = Widen( minU, maxU );
+		(minV, maxV) = Widen( minV, maxV );
+		(far, near) = Widen( far, near );
+
+		return (new Color32( (byte)minU, (byte)minV, (byte)maxU, 255 ), new Color32( (byte)maxV, (byte)near, (byte)far, 255 ));
+	}
+
+	/// <summary>
+	/// The bounds two lookup texels describe. Matches the shader's <c>FlatpackFrameFit</c>.
+	/// </summary>
+	public static FrameFit DecodeFrameFit( (Color32 Rect, Color32 Depth) texels ) => new()
+	{
+		Min = new Vector2( texels.Rect.r / 255.0f, texels.Rect.g / 255.0f ),
+		Max = new Vector2( texels.Rect.b / 255.0f, texels.Depth.r / 255.0f ),
+		Near = texels.Depth.g / 255.0f * 2.0f - 1.0f,
+		Far = texels.Depth.b / 255.0f * 2.0f - 1.0f,
+	};
+
+	static (int Low, int High) Widen( int low, int high )
+	{
+		while ( high - low < 2 )
+		{
+			if ( high < 255 ) high++;
+			if ( high - low < 2 && low > 0 ) low--;
+		}
+		return (low, high);
+	}
+
 	static Vector3 Farthest( IReadOnlyList<Vector3> points, Vector3 from )
 	{
 		var best = from;

@@ -20,16 +20,16 @@ public enum FlatpackAtlasSize
 /// </summary>
 public enum FlatpackQuality
 {
-	[Title( "Low" ), Description( "12 x 12 views, 1024 atlas, 8 search steps. About 4 MB. For props you only see from far away (past about 16 bounding radii)." )]
+	[Title( "Low" ), Description( "12 x 12 views, 1024 atlas, 8 search steps. About 5 MB. For props you only see from far away (past about 16 bounding radii)." )]
 	Low,
 
-	[Title( "Medium" ), Description( "12 x 12 views, 2048 atlas, 16 search steps. About 16 MB. The default: holds up from about 6 bounding radii." )]
+	[Title( "Medium" ), Description( "12 x 12 views, 2048 atlas, 16 search steps. About 19 MB. The default: holds up from about 4 to 6 bounding radii." )]
 	Medium,
 
-	[Title( "High" ), Description( "24 x 24 views, 4096 atlas, 16 search steps. About 64 MB. Same as Medium up close, closer to the real model past 8 bounding radii." )]
+	[Title( "High" ), Description( "24 x 24 views, 4096 atlas, 16 search steps. About 75 MB. Same as Medium up close, closer to the real model past 8 bounding radii." )]
 	High,
 
-	[Title( "Ultra" ), Description( "12 x 12 views, 3072 atlas, 32 search steps. About 36 MB and about 1.5x the GPU cost of Medium. The sharpest level up close: for props that swap near the camera." )]
+	[Title( "Ultra" ), Description( "12 x 12 views, 3072 atlas, 32 search steps. About 42 MB and about 1.5x the GPU cost of Medium. The sharpest level up close: for props that swap near the camera." )]
 	Ultra,
 
 	[Title( "Auto" ), Description( "Bake at Low, measure the card against the model at the target distance, and step up a level until it holds up. Slower to bake; saves memory on models that look fine at a lower level." )]
@@ -137,6 +137,20 @@ public sealed class FlatpackBakeSettings
 	/// the transparent background as a dark halo. 0 fills the whole frame.
 	/// </summary>
 	[Property, Range( 0, 64 ), Step( 1 )] public int EdgePadding { get; set; } = 16;
+
+	/// <summary>
+	/// Frame every view to the model's own outline and depth in that view instead of its whole bounding sphere. A tall
+	/// statue fills its views instead of a third of them, and the depth spans only the surfaces the view sees, so the
+	/// same atlas holds more texels and finer depth on the object.
+	/// </summary>
+	[Property] public bool FitEachView { get; set; } = true;
+
+	/// <summary>
+	/// Bits of depth per texel: 8 (BC4, half a byte a texel) or 16 (R16, 2 bytes). Measured in iteration 8 on the test set
+	/// at Medium: 16 bits had 2.3 points fewer wrong pixels at 2 radii and 1.6 at 4, for more video memory (about
+	/// 27 MB against 19 at Medium, 60 against 42 at Ultra).
+	/// </summary>
+	[Property, Range( 8, 16 ), Step( 8 )] public int DepthBits { get; set; } = 8;
 
 	/// <summary>
 	/// Folder for the outputs, relative to the project's Assets folder (for example <c>flatpack/trees</c>).

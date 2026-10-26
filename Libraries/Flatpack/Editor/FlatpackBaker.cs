@@ -13,13 +13,14 @@ using Sandbox;
 namespace Flatpack.EditorTools;
 
 /// <summary>
-/// Bakes a model into a Flatpack impostor: albedo, normal + depth and roughness + AO atlases, a material using
-/// <c>flatpack_impostor.shader</c>, and a <see cref="FlatpackImpostor"/> resource that ties them together.
+/// Bakes a model into a Flatpack impostor: albedo, normal, depth and roughness + AO atlases, a frame lookup texture, a
+/// material using <c>flatpack_impostor.shader</c>, and a <see cref="FlatpackImpostor"/> resource that ties them together.
 /// </summary>
 /// <remarks>
 /// <para>
 /// The model is rendered alone in a throwaway scene with an orthographic camera, once per frame of the
-/// N x N grid. Each pass uses one of the engine's camera debug views, which write material data straight to
+/// N x N grid. Each camera is fitted to that view's outline and depth range (stored in the frame lookup texture), so the
+/// object fills its frame. Each pass uses one of the engine's camera debug views, which write material data straight to
 /// the target with no lighting, exposure or tonemapping:
 /// </para>
 /// <list type="bullet">
@@ -28,7 +29,7 @@ namespace Flatpack.EditorTools;
 /// rotation, so world space is object space.</item>
 /// <item>Roughness, AmbientOcclusion: linear values as bytes.</item>
 /// <item>Depth: there is no depth view, so <c>flatpack_bake_depth.shader</c> goes on as a material override and
-/// writes linear depth as albedo, read back through the Albedo view.</item>
+/// writes linear depth as albedo (16 bits split over red and green), read back through the Albedo view.</item>
 /// </list>
 /// </remarks>
 public static class FlatpackBaker
@@ -48,6 +49,12 @@ public static class FlatpackBaker
 	/// set: fence 0.75, weed tree 0.50, everything solid or leafy 0.06 to 0.24.
 	/// </summary>
 	public const float SeeThroughShare = 0.4f;
+
+	/// <summary>
+	/// Framed bakes whose covered texels are more than this share partly covered are fine wire mesh and get baked again
+	/// unframed. Measured framed in iteration 8: fence 0.59, weed tree 0.42, solid and leafy models 0.10 or less.
+	/// </summary>
+	const float FineMeshShare = 0.5f;
 
 	/// <summary>
 	/// What a bake wrote.
@@ -233,26 +240,43 @@ public static class FlatpackBaker
 		// A sphere fitted to the vertices is usually much smaller than the box's half diagonal, so the object fills more
 		// of every frame. Fall back to the box for models without readable vertices.
 		var vertices = model.GetVertices();
-		var (center, radius) = vertices is { Length: > 0 }
-			? FlatpackMath.BoundingSphere( vertices.Select( v => v.Position ).ToArray() )
+		var points = vertices is { Length: > 0 } ? vertices.Select( v => v.Position ).ToArray() : null;
+		var (center, radius) = points is not null
+			? FlatpackMath.BoundingSphere( points )
 			: FlatpackMath.BoundingSphere( bounds );
 
 		var (folder, assetsRoot) = ResolveOutputFolder( model, settings );
 		var name = SafeName( model );
 
+		var fitted = settings.FitEachView && points is not null;
+		var fits = FitFrames( points, center, radius, n, cell, layout, fitted );
+
 		var albedo = new Color32[atlas * atlas];
-		var normalDepth = new Color32[atlas * atlas];
+		var normal = new Color32[atlas * atlas];
+		var depth = new float[atlas * atlas];
 		var rao = settings.BakeRoughnessAo ? new Color32[atlas * atlas] : null;
+		var supersample = Math.Clamp( settings.Supersample, 1, 4 );
 
 		progress?.Invoke( 0.0f, $"Baking {name}" );
-		var bakedMetal = await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, Math.Clamp( settings.Supersample, 1, 4 ), progress, cancel );
+		var bakedMetal = await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, fits, albedo, normal, depth, rao, settings.BakeSelfShadow, supersample, progress, cancel );
+		var seeThrough = PartialCoverageShare( albedo );
+
+		// Fine wire mesh does worse framed: a fence panel seen edge-on squeezes into a sliver of texels, and its card came
+		// out sparser than the real fence from 16 radii (iteration 8: 64 to 68% wrong pixels against 45 unframed). Bake
+		// those views sphere-sized again. The weed tree's twigs (0.42 framed) keep the framing, which helped them a lot.
+		if ( fitted && seeThrough > FineMeshShare )
+		{
+			progress?.Invoke( 0.0f, $"Baking {name} again, unframed (fine mesh)" );
+			fits = FitFrames( points, center, radius, n, cell, layout, false );
+			bakedMetal = await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, fits, albedo, normal, depth, rao, settings.BakeSelfShadow, supersample, progress, cancel );
+			seeThrough = PartialCoverageShare( albedo );
+		}
 
 		cancel.ThrowIfCancellationRequested();
 		progress?.Invoke( 0.85f, "Padding edges" );
 		await Task.Delay( 1 );
 
-		var seeThrough = PartialCoverageShare( albedo );
-		DilateIntoFrames( albedo, normalDepth, rao, atlas, cell, settings.EdgePadding );
+		DilateIntoFrames( albedo, normal, depth, rao, atlas, cell, settings.EdgePadding );
 		var mipAlphaScales = MipAlphaScales( albedo, atlas );
 
 		cancel.ThrowIfCancellationRequested();
@@ -262,14 +286,27 @@ public static class FlatpackBaker
 		Directory.CreateDirectory( folder );
 		var files = new List<string>();
 
+		var depthBits = settings.DepthBits >= 12 ? 16 : 8;
 		var albedoFile = WritePng( Path.Combine( folder, $"{name}_fp_albedo.png" ), albedo, atlas, files );
-		var normalFile = WritePng( Path.Combine( folder, $"{name}_fp_normal.png" ), normalDepth, atlas, files );
+		var normalFile = WritePng( Path.Combine( folder, $"{name}_fp_normal.png" ), normal, atlas, files );
+		var depthFile = depthBits == 16
+			? WritePfm( Path.Combine( folder, $"{name}_fp_depth.pfm" ), depth, atlas, files )
+			: WritePng( Path.Combine( folder, $"{name}_fp_depth.png" ), DepthBytes( depth ), atlas, files );
+		var framesFile = WriteFrames( Path.Combine( folder, $"{name}_fp_frames.png" ), fits, n, files );
+
+		// The coarse map must never read deeper than the depth texture it summarises, or the search would skip a block
+		// it should have searched: BC4 rounds by a few steps, R16 by half of one.
+		var coarse = CoarseDepth( depth, atlas, cell, n, depthBits == 16 ? 1.0f / 65535.0f : 4.0f / 255.0f, out var coarseSize );
+		var coarseFile = Path.Combine( folder, $"{name}_fp_depthmin.pfm" );
+		FlatpackPfm.WriteGray( coarseFile, coarse, coarseSize, coarseSize );
+		files.Add( coarseFile );
 		var raoFile = rao is null ? null : WritePng( Path.Combine( folder, $"{name}_fp_rao.png" ), rao, atlas, files );
 
 		var zLocked = settings.ZLockedCard || layout == FlatpackLayout.Cylinder;
 		var materialFile = Path.Combine( folder, $"{name}_fp.vmat" );
 		File.WriteAllText( materialFile, BuildMaterial(
-			Relative( assetsRoot, albedoFile ), Relative( assetsRoot, normalFile ), raoFile is null ? null : Relative( assetsRoot, raoFile ),
+			Relative( assetsRoot, albedoFile ), Relative( assetsRoot, normalFile ), Relative( assetsRoot, depthFile ), depthBits,
+			Relative( assetsRoot, framesFile ), Relative( assetsRoot, coarseFile ), raoFile is null ? null : Relative( assetsRoot, raoFile ),
 			n, layout, center, radius, zLocked, mipAlphaScales, searchSteps, seeThrough > SeeThroughShare, bakedMetal ) );
 		files.Add( materialFile );
 
@@ -328,10 +365,29 @@ public static class FlatpackBaker
 	}
 
 	/// <summary>
+	/// Each view's bounds: its outline and depth range from the vertices when <paramref name="fitted"/>, else the whole
+	/// sphere. Padded by two texels so bilinear filtering at the outline stays inside the frame.
+	/// </summary>
+	static FlatpackMath.FrameFit[] FitFrames( Vector3[] points, Vector3 center, float radius, int n, int cell, FlatpackLayout layout, bool fitted )
+	{
+		var fits = new FlatpackMath.FrameFit[n * n];
+		for ( var y = 0; y < n; y++ )
+		{
+			for ( var x = 0; x < n; x++ )
+			{
+				fits[y * n + x] = fitted
+					? FlatpackMath.FitFrame( points, center, radius, FlatpackMath.FrameDirection( x, y, n, layout ), cell, 2 )
+					: FlatpackMath.DecodeFrameFit( FlatpackMath.EncodeFrameFit( FlatpackMath.FrameFit.Sphere ) );
+			}
+		}
+		return fits;
+	}
+
+	/// <summary>
 	/// Render every frame and copy it into the CPU atlases. Returns whether metalness went into the roughness/AO atlas.
 	/// </summary>
-	static async Task<bool> CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius,
-		Color32[] albedo, Color32[] normalDepth, Color32[] rao, bool selfShadow, int supersample, Action<float, string> progress, CancellationToken cancel )
+	static async Task<bool> CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius, FlatpackMath.FrameFit[] fits,
+		Color32[] albedo, Color32[] normal, float[] depth, Color32[] rao, bool selfShadow, int supersample, Action<float, string> progress, CancellationToken cancel )
 	{
 		var depthMaterial = Material.Create( "flatpack_bake_depth", DepthShader, true );
 		selfShadow &= rao is not null;
@@ -360,12 +416,6 @@ public static class FlatpackBaker
 				camera.BackgroundColor = Color.Transparent;
 				camera.Orthographic = true;
 
-				// The frame covers the bounding sphere exactly: 2r tall (and wide, the frame is square), near plane on
-				// the sphere's front, far plane on its back. Depth 0..1 then spans the whole object.
-				camera.OrthographicHeight = radius * 2.0f;
-				camera.ZNear = radius;
-				camera.ZFar = radius * 3.0f;
-
 				if ( selfShadow )
 				{
 					var light = new GameObject( true, "sky light" );
@@ -389,19 +439,20 @@ public static class FlatpackBaker
 					cancel.ThrowIfCancellationRequested();
 
 					var dir = FlatpackMath.FrameDirection( x, y, n, layout );
+					var fit = fits[y * n + x];
 
-					Color32[] colorPixels, normalPixels, depthPixels, roughPixels = null, aoPixels = null;
+					Color32[] colorPixels, normalPixels, roughPixels = null, aoPixels = null;
+					float[] depthPixels;
 					byte[] visibility = null, metalness = null;
 
 					using ( scene.Push() )
 					{
-						camera.WorldPosition = center + dir * radius * 2.0f;
-						camera.WorldRotation = FlatpackMath.FrameRotation( dir );
+						FrameCamera( camera, center, radius, dir, fit );
 						scene.EditorTick( 0.0f, 0.0f );
 
 						colorPixels = Capture( camera, renderer, frame, SceneCameraDebugMode.Albedo, null );
 						normalPixels = Capture( camera, renderer, frame, SceneCameraDebugMode.NormalMap, null );
-						depthPixels = Capture( camera, renderer, frame, SceneCameraDebugMode.Albedo, depthMaterial );
+						depthPixels = DecodeDepth( Capture( camera, renderer, frame, SceneCameraDebugMode.Albedo, depthMaterial ) );
 
 						if ( rao is not null )
 						{
@@ -423,7 +474,7 @@ public static class FlatpackBaker
 					if ( supersample > 1 )
 						Downsample( cell, supersample, ref colorPixels, ref normalPixels, ref depthPixels, ref roughPixels, ref aoPixels, ref visibility, ref metalness );
 
-					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, metalness, albedo, normalDepth, rao );
+					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, metalness, albedo, normal, depth, rao );
 
 					var done = y * n + x + 1;
 					progress?.Invoke( done / (float)total * 0.85f, $"Frame {done} of {total}" );
@@ -529,6 +580,51 @@ public static class FlatpackBaker
 	{
 		var c = value / 255.0f;
 		return c <= 0.04045f ? c / 12.92f : MathF.Pow( (c + 0.055f) / 1.055f, 2.4f );
+	}
+
+	/// <summary>
+	/// Point the bake camera at one frame: orthographic, framing exactly the frame's fitted image rectangle (wider or
+	/// taller than square when the object is), with the near plane on its nearest surface.
+	/// </summary>
+	static void FrameCamera( CameraComponent camera, Vector3 center, float radius, Vector3 dir, FlatpackMath.FrameFit fit )
+	{
+		FlatpackMath.FrameBasis( dir, out var right, out var up );
+
+		var size = (fit.Max - fit.Min) * (2.0f * radius);
+		var mid = (fit.Min + fit.Max) * 0.5f - new Vector2( 0.5f, 0.5f );
+
+		// Image v runs down, so the rectangle's centre is up by -v. The camera stays two radii out, outside the sphere.
+		var distance = radius * 2.0f;
+		camera.WorldPosition = center + right * (mid.x * 2.0f * radius) - up * (mid.y * 2.0f * radius) + dir * distance;
+		camera.WorldRotation = FlatpackMath.FrameRotation( dir );
+
+		// Depth 0..1 spans one bounding diameter back from the nearest surface, not just to the furthest one: the background
+		// then sits at least a diameter behind the object, where the shader's search never reaches, even in mips that
+		// average an outline with it. 16 bits over a diameter is still 256 times finer than the 8 bits it replaces.
+		var zNear = distance - fit.Near * radius;
+		var zFar = zNear + 2.0f * radius;
+		camera.OrthographicHeight = size.y;
+		camera.ZNear = zNear;
+		camera.ZFar = zFar;
+
+		// The engine's own orthographic camera is square for a square target; this is the same matrix (checked against
+		// CameraComponent.ProjectionMatrix in the editor) with its own width, so a tall object fills the frame both ways.
+		camera.CustomProjectionMatrix = new Matrix(
+			2.0f / size.x, 0, 0, 0,
+			0, 2.0f / size.y, 0, 0,
+			0, 0, -1.0f / (zFar - zNear), -zNear / (zFar - zNear),
+			0, 0, 0, 1 );
+	}
+
+	/// <summary>
+	/// The depth bake's red and green bytes back to one 0..1 depth: red is whole 1/255 steps, green the fraction of a step.
+	/// </summary>
+	static float[] DecodeDepth( Color32[] pixels )
+	{
+		var depth = new float[pixels.Length];
+		for ( var i = 0; i < pixels.Length; i++ )
+			depth[i] = Math.Clamp( (pixels[i].r + pixels[i].g / 255.0f) / 255.0f, 0.0f, 1.0f );
+		return depth;
 	}
 
 	static Color32[] Capture( CameraComponent camera, ModelRenderer renderer, Bitmap target, SceneCameraDebugMode mode, Material overrideMaterial )
@@ -677,12 +773,12 @@ public static class FlatpackBaker
 	/// samples; colour, normal, depth and the material channels average over the covered samples only, so the empty
 	/// background doesn't darken thin parts.
 	/// </summary>
-	static void Downsample( int cell, int ss, ref Color32[] color, ref Color32[] normal, ref Color32[] depth, ref Color32[] rough, ref Color32[] ao, ref byte[] visibility, ref byte[] metal )
+	static void Downsample( int cell, int ss, ref Color32[] color, ref Color32[] normal, ref float[] depth, ref Color32[] rough, ref Color32[] ao, ref byte[] visibility, ref byte[] metal )
 	{
 		var size = cell * ss;
 		var outColor = new Color32[cell * cell];
 		var outNormal = new Color32[cell * cell];
-		var outDepth = new Color32[cell * cell];
+		var outDepth = new float[cell * cell];
 		var outRough = rough is null ? null : new Color32[cell * cell];
 		var outAo = ao is null ? null : new Color32[cell * cell];
 		var outVis = visibility is null ? null : new byte[cell * cell];
@@ -712,7 +808,7 @@ public static class FlatpackBaker
 						covered++;
 						r += c.r; g += c.g; b += c.b;
 						nx += normal[i].r / 127.5f - 1.0f; ny += normal[i].g / 127.5f - 1.0f; nz += normal[i].b / 127.5f - 1.0f;
-						d += depth[i].r;
+						d += depth[i];
 						if ( rough is not null ) ro += rough[i].r;
 						if ( ao is not null ) oc += ao[i].r;
 						if ( visibility is not null ) vi += visibility[i];
@@ -732,8 +828,7 @@ public static class FlatpackBaker
 				if ( len < 1e-4f ) len = 1.0f;
 				outNormal[o] = new Color32( B( (nx / len + 1.0f) * 127.5f ), B( (ny / len + 1.0f) * 127.5f ), B( (nz / len + 1.0f) * 127.5f ), 255 );
 
-				var dv = B( d / covered );
-				outDepth[o] = new Color32( dv, dv, dv, 255 );
+				outDepth[o] = d / covered;
 				if ( outRough is not null ) { var v = B( ro / covered ); outRough[o] = new Color32( v, v, v, 255 ); }
 				if ( outAo is not null ) { var v = B( oc / covered ); outAo[o] = new Color32( v, v, v, 255 ); }
 				if ( outVis is not null ) outVis[o] = B( vi / covered );
@@ -745,10 +840,11 @@ public static class FlatpackBaker
 	}
 
 	/// <summary>
-	/// Copy one frame's passes into the atlases. Uncovered texels stay fully clear for the dilation pass.
+	/// Copy one frame's passes into the atlases. Uncovered texels stay fully clear (depth at the far plane) for the
+	/// dilation pass.
 	/// </summary>
-	static void BlitFrame( int fx, int fy, int cell, int atlas, Color32[] color, Color32[] normal, Color32[] depth, Color32[] rough, Color32[] ao,
-		byte[] visibility, byte[] metal, Color32[] albedoAtlas, Color32[] normalAtlas, Color32[] raoAtlas )
+	static void BlitFrame( int fx, int fy, int cell, int atlas, Color32[] color, Color32[] normal, float[] depth, Color32[] rough, Color32[] ao,
+		byte[] visibility, byte[] metal, Color32[] albedoAtlas, Color32[] normalAtlas, float[] depthAtlas, Color32[] raoAtlas )
 	{
 		for ( var py = 0; py < cell; py++ )
 		{
@@ -764,16 +860,14 @@ public static class FlatpackBaker
 				{
 					albedoAtlas[dst] = default;
 					normalAtlas[dst] = new Color32( 128, 128, 255, 255 );
+					depthAtlas[dst] = 1.0f;
 					if ( raoAtlas is not null ) raoAtlas[dst] = default;
 					continue;
 				}
 
 				albedoAtlas[dst] = c;
-
-				// Depth rides in the normal atlas's alpha. Keep it at 1 or above: the bitmap drops the colour of a
-				// texel whose alpha is 0, and that would wipe the normal.
-				var n = normal[src];
-				normalAtlas[dst] = new Color32( n.r, n.g, n.b, Math.Max( depth[src].r, (byte)1 ) );
+				normalAtlas[dst] = new Color32( normal[src].r, normal[src].g, normal[src].b, 255 );
+				depthAtlas[dst] = depth[src];
 
 				// Metalness rides in alpha as 1 + metal x 254 (never 0, which would wipe the colour; see the shader).
 				if ( raoAtlas is not null )
@@ -791,7 +885,7 @@ public static class FlatpackBaker
 	/// covered texel (by steps) in its own frame. Albedo alpha on grown texels is 1/255, far below the alpha clip,
 	/// but non-zero so the colour survives the PNG round trip.
 	/// </remarks>
-	static void DilateIntoFrames( Color32[] albedo, Color32[] normalDepth, Color32[] rao, int atlas, int cell, int padding )
+	static void DilateIntoFrames( Color32[] albedo, Color32[] normal, float[] depth, Color32[] rao, int atlas, int cell, int padding )
 	{
 		var maxSteps = padding <= 0 ? int.MaxValue : padding;
 		var source = new int[albedo.Length];
@@ -840,17 +934,19 @@ public static class FlatpackBaker
 			var c = albedo[s];
 			albedo[to] = new Color32( c.r, c.g, c.b, 1 );
 
-			// Grown texels keep the neighbour's normal but sit at the far plane (depth 255), so the shader's depth search
-			// passes straight through the background instead of stopping on borrowed depth and drawing a ghost.
-			var nd = normalDepth[s];
-			normalDepth[to] = new Color32( nd.r, nd.g, nd.b, 255 );
+			// Grown texels keep the neighbour's normal but sit at the far plane, so the shader's depth search passes
+			// straight through the background instead of stopping on borrowed depth and drawing a ghost.
+			normal[to] = normal[s];
+			depth[to] = 1.0f;
 			if ( rao is not null ) rao[to] = rao[s];
 		}
 	}
 
-	static string WritePng( string path, Color32[] pixels, int size, List<string> files )
+	static string WritePng( string path, Color32[] pixels, int size, List<string> files ) => WritePng( path, pixels, size, size, files );
+
+	static string WritePng( string path, Color32[] pixels, int width, int height, List<string> files )
 	{
-		using var bitmap = new Bitmap( size, size, false );
+		using var bitmap = new Bitmap( width, height, false );
 		var colors = new Color[pixels.Length];
 		for ( var i = 0; i < pixels.Length; i++ )
 			colors[i] = pixels[i];
@@ -859,6 +955,85 @@ public static class FlatpackBaker
 		File.WriteAllBytes( path, bitmap.ToPng() );
 		files.Add( path );
 		return path;
+	}
+
+	/// <summary>The 16-bit depth atlas, as a float image the texture compiler turns into R16.</summary>
+	static string WritePfm( string path, float[] depth, int size, List<string> files )
+	{
+		FlatpackPfm.WriteGray( path, depth, size, size );
+		files.Add( path );
+		return path;
+	}
+
+	/// <summary>Depth rounded to bytes, for the 8-bit (BC4) depth texture.</summary>
+	static Color32[] DepthBytes( float[] depth )
+	{
+		var bytes = new Color32[depth.Length];
+		for ( var i = 0; i < depth.Length; i++ )
+		{
+			var v = (byte)Math.Clamp( (int)MathF.Round( depth[i] * 255.0f ), 0, 255 );
+			bytes[i] = new Color32( v, v, v, 255 );
+		}
+		return bytes;
+	}
+
+	/// <summary>Texels per side of one coarse depth block (written into the material as <c>g_flFlatpackCoarseBlock</c>).</summary>
+	public const int CoarseBlock = 16;
+
+	/// <summary>
+	/// The coarse depth map: for each <see cref="CoarseBlock"/> x <see cref="CoarseBlock"/> texel block of each frame, the
+	/// nearest depth in it (the smallest value) less <paramref name="margin"/>, laid out per frame like the atlas
+	/// (frame x, y at blocks x, y of a <paramref name="size"/>-wide square). The shader's search skips every block whose
+	/// nearest surface the ray never gets down to, and marches the rest a texel at a time.
+	/// </summary>
+	static float[] CoarseDepth( float[] depth, int atlas, int cell, int n, float margin, out int size )
+	{
+		var blocks = (cell + CoarseBlock - 1) / CoarseBlock;
+		size = blocks * n;
+		var coarse = new float[size * size];
+
+		for ( var fy = 0; fy < n; fy++ )
+		for ( var fx = 0; fx < n; fx++ )
+		for ( var by = 0; by < blocks; by++ )
+		for ( var bx = 0; bx < blocks; bx++ )
+		{
+			var nearest = 1.0f;
+			for ( var y = by * CoarseBlock; y < Math.Min( (by + 1) * CoarseBlock, cell ); y++ )
+			{
+				var row = (fy * cell + y) * atlas + fx * cell;
+				for ( var x = bx * CoarseBlock; x < Math.Min( (bx + 1) * CoarseBlock, cell ); x++ )
+					nearest = MathF.Min( nearest, depth[row + x] );
+			}
+
+			coarse[(fy * blocks + by) * size + fx * blocks + bx] = MathF.Max( 0.0f, nearest - margin );
+		}
+
+		return coarse;
+	}
+
+	/// <summary>
+	/// The frame lookup texture: two texels per frame (see <see cref="FlatpackMath.EncodeFrameFit"/>), image rectangles in
+	/// the left half, depth ranges <see cref="FlatpackMath.FrameFitColumns"/> texels to the right.
+	/// </summary>
+	static string WriteFrames( string path, FlatpackMath.FrameFit[] fits, int n, List<string> files )
+	{
+		const int width = FlatpackMath.FrameFitColumns * 2;
+		const int height = FlatpackMath.FrameFitColumns;
+		var pixels = new Color32[width * height];
+		for ( var i = 0; i < pixels.Length; i++ )
+			pixels[i] = new Color32( 0, 0, 255, 255 );
+
+		for ( var y = 0; y < n; y++ )
+		{
+			for ( var x = 0; x < n; x++ )
+			{
+				var (rect, range) = FlatpackMath.EncodeFrameFit( fits[y * n + x] );
+				pixels[y * width + x] = rect;
+				pixels[y * width + x + FlatpackMath.FrameFitColumns] = range;
+			}
+		}
+
+		return WritePng( path, pixels, width, height, files );
 	}
 
 	/// <summary>
@@ -915,7 +1090,8 @@ public static class FlatpackBaker
 		return scales;
 	}
 
-	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales, int searchSteps, bool seeThrough, bool bakedMetal )
+	static string BuildMaterial( string albedo, string normal, string depth, int depthBits, string frames, string coarse, string rao, int n, FlatpackLayout layout, Vector3 center, float radius,
+		bool zLocked, float[] mipAlphaScales, int searchSteps, bool seeThrough, bool bakedMetal )
 	{
 		string F( float v ) => v.ToString( "0.000000", CultureInfo.InvariantCulture );
 
@@ -925,7 +1101,14 @@ public static class FlatpackBaker
 		sb.AppendLine( "{" );
 		sb.AppendLine( $"\tshader \"{ImpostorShader}\"" );
 		sb.AppendLine( $"\tTextureAlbedo \"{albedo}\"" );
-		sb.AppendLine( $"\tTextureNormalDepth \"{normal}\"" );
+		sb.AppendLine( $"\tTextureNormal \"{normal}\"" );
+		sb.AppendLine( depthBits == 16 ? $"\tTextureDepth \"{depth}\"" : $"\tTextureDepthBC4 \"{depth}\"" );
+		sb.AppendLine( $"\tTextureFrames \"{frames}\"" );
+		sb.AppendLine( $"\tTextureDepthMin \"{coarse}\"" );
+		sb.AppendLine( $"\tg_flFlatpackCoarse \"{F( 1 )}\"" );
+		sb.AppendLine( $"\tg_flFlatpackCoarseBlock \"{F( CoarseBlock )}\"" );
+		sb.AppendLine( $"\tg_flFlatpackFramed \"{F( 1 )}\"" );
+		sb.AppendLine( $"\tg_flFlatpackDepthBits \"{F( depthBits )}\"" );
 		if ( rao is not null )
 			sb.AppendLine( $"\tTextureRoughnessAo \"{rao}\"" );
 		sb.AppendLine( $"\tg_flFlatpackGrid \"{F( n )}\"" );

@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Editor;
 using Sandbox;
@@ -29,15 +30,19 @@ public sealed class FlatpackRendererEditor : ComponentEditorWidget
 		if ( renderers.Length == 1 && renderers[0].Impostor is { } impostor )
 		{
 			var r = renderers[0];
-			var swapRadii = impostor.Radius > 0 ? r.EffectiveSwapDistance / impostor.Radius : 0;
+
+			// Radii are the bake's own bounding radius times this object's scale, so metres follow the object's real size.
+			var scale = r.WorldScale;
+			var radius = impostor.Radius * MathF.Max( scale.x, MathF.Max( scale.y, scale.z ) );
+			var swapRadii = radius > 0 ? r.EffectiveSwapDistance / radius : 0;
 			var holds = impostor.HoldsUpFrom switch
 			{
-				> 0 => $"matches the model from {impostor.HoldsUpFrom:0.#} radii",
-				< 0 => "never matches the model closely inside 16 radii",
+				> 0 => $"matches the model from {impostor.HoldsUpFrom:0.#} radii ({FlatpackMath.FormatMetres( impostor.HoldsUpFrom * radius )})",
+				< 0 => $"never matches the model closely inside 16 radii ({FlatpackMath.FormatMetres( 16.0f * radius )})",
 				_ => "not measured (re-bake to measure)",
 			};
 			var level = string.IsNullOrEmpty( impostor.QualityLevel ) ? "" : $"{impostor.QualityLevel} bake, ";
-			var info = Layout.Add( new Label( $"{level}{holds}. Swaps at {swapRadii:0.#} radii ({r.EffectiveSwapDistance:0} units)." ) { WordWrap = true } );
+			var info = Layout.Add( new Label( $"{level}{holds}. Swaps at {swapRadii:0.#} radii ({FlatpackMath.FormatMetres( r.EffectiveSwapDistance )})." ) { WordWrap = true } );
 			info.ContentMargins = new Sandbox.UI.Margin( 8, 4, 8, 0 );
 			if ( impostor.HoldsUpFrom < 0 )
 				info.SetStyles( "color: #e0a030;" );

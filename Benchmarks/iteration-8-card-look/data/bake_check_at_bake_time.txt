@@ -1,0 +1,45 @@
+[
+  "wooden_chair_a|holds=4|Looks like the model from 4 bounding radii outward.|6.7s",
+  "dragon_statue|holds=4|Looks like the model from 4 bounding radii outward.|8.5s",
+  "fence_panel_gate|holds=6|Looks like the model from 6 bounding radii outward.|8.8s",
+  "knight_statue_01|holds=6|Looks like the model from 6 bounding radii outward.|9.4s",
+  "tree_small_03|holds=6|Looks like the model from 6 bounding radii outward.|8.6s",
+  "weed_tree_small|holds=12|Looks like the model from 12 bounding radii outward.|6.5s",
+  "tropical_giant_fern_0|holds=3|Looks like the model from 3 bounding radii outward.|6.2s"
+]
+[
+  "wooden_chair_a|holds=4|Looks like the model from 4 bounding radii outward.|7.1s",
+  "dragon_statue|holds=6|Looks like the model from 6 bounding radii outward.|9.1s",
+  "fence_panel_gate|holds=6|Looks like the model from 6 bounding radii outward.|8.5s",
+  "knight_statue_01|holds=6|Looks like the model from 6 bounding radii outward.|9.2s",
+  "tree_small_03|holds=6|Looks like the model from 6 bounding radii outward.|10.3s",
+  "weed_tree_small|holds=12|Looks like the model from 12 bounding radii outward.|7.1s",
+  "tropical_giant_fern_0|holds=3|Looks like the model from 3 bounding radii outward.|6.4s"
+]
+[
+  "wooden_chair_a|holds=4|Looks like the model from 4 bounding radii outward.|4.3s",
+  "dragon_statue|holds=6|Looks like the model from 6 bounding radii outward.|10.0s",
+  "fence_panel_gate|holds=6|Looks like the model from 6 bounding radii outward.|10.9s",
+  "knight_statue_01|holds=16|Looks like the model from 16 bounding radii outward.|11.2s",
+  "tree_small_03|holds=6|Looks like the model from 6 bounding radii outward.|11.0s",
+  "weed_tree_small|holds=12|Looks like the model from 12 bounding radii outward.|7.3s",
+  "tropical_giant_fern_0|holds=3|Looks like the model from 3 bounding radii outward.|7.2s"
+]
+[
+  "wooden_chair_a|holds=6|Looks like the model from 6 bounding radii outward.|7.4s",
+  "dragon_statue|holds=6|Looks like the model from 6 bounding radii outward.|12.1s",
+  "fence_panel_gate|holds=6|Looks like the model from 6 bounding radii outward.|11.4s",
+  "knight_statue_01|holds=6|Looks like the model from 6 bounding radii outward.|11.8s",
+  "tree_small_03|holds=6|Looks like the model from 6 bounding radii outward.|10.1s",
+  "weed_tree_small|holds=12|Looks like the model from 12 bounding radii outward.|8.5s",
+  "tropical_giant_fern_0|holds=3|Looks like the model from 3 bounding radii outward.|7.1s"
+]
+[
+  "wooden_chair_a|holds=16|Looks like the model from 16 bounding radii outward.|5.7s",
+  "dragon_statue|holds=12|Looks like the model from 12 bounding radii outward.|8.3s",
+  "fence_panel_gate|holds=16|Looks like the model from 16 bounding radii outward.|7.2s",
+  "knight_statue_01|holds=8|Looks like the model from 8 bounding radii outward.|7.7s",
+  "tree_small_03|holds=8|Looks like the model from 8 bounding radii outward.|6.4s",
+  "weed_tree_small|holds=12|Looks like the model from 12 bounding radii outward.|5.5s",
+  "tropical_giant_fern_0|holds=6|Looks like the model from 6 bounding radii outward.|7.2s"
+]

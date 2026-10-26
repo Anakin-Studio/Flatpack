@@ -124,7 +124,8 @@ public sealed class FlatpackImpostor : GameResource
 		if ( _atlases is null || _atlasMaterial != Material )
 		{
 			_atlasMaterial = Material;
-			_atlases = new[] { "g_tFlatpackAlbedo", "g_tFlatpackNormalDepth", "g_tFlatpackRoughnessAo" }
+			// Bakes from before iteration 8 use the combined normal and depth atlas; later ones the separate pair.
+			_atlases = new[] { "g_tFlatpackAlbedo", "g_tFlatpackNormalDepth", "g_tFlatpackNormal", "g_tFlatpackDepth", "g_tFlatpackDepth8", "g_tFlatpackDepthMin", "g_tFlatpackFrames", "g_tFlatpackRoughnessAo" }
 				.Select( Material.GetTexture )
 				.Where( t => t is not null )
 				.ToArray();

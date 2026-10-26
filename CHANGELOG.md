@@ -5,6 +5,102 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: Metres beside bounding radii
+
+- Change:
+  - `FlatpackMath.MetresPerUnit`, `ToMetres` and `FormatMetres`: one conversion (world units are inches; one decimal
+    under 10 m), the same one the iteration 6 tree sheet used for "6 radii (21 m)".
+  - The Flatpack Renderer inspector shows metres beside "matches the model from" and "swaps at", using the object's
+    scale. The bake check summary does too (`FlatpackQualityCheck.Report.Radius`).
+  - README distance and swap tables carry metres. The iteration 3 and 4 distance sheets (knight, tree, chair) are
+    relabelled with metres; their renders are unchanged. The harness heatmaps label rows in radii and metres.
+- Files: `Libraries/Flatpack/Code/FlatpackMath.cs`, `Libraries/Flatpack/Editor/FlatpackRendererEditor.cs`,
+  `Libraries/Flatpack/Editor/FlatpackQualityCheck.cs`, `Libraries/Flatpack/UnitTests/FlatpackMathTests.cs`, `README.md`,
+  `Benchmarks/iteration-3-ten-models/media/distance_{knight,tree}.png`,
+  `Benchmarks/iteration-4-quality-levels/media/presets_distance_{chair,tree,knight}.png`
+- Testing: editor. Compiles clean; `FormatMetres` gives "21 m" for 6 radii of the 140.08-unit tree and "4.1 m" for the
+  chair; bake summaries print metres (for example "4 bounding radii (15 m)" for the tree). The inspector label wasn't
+  looked at by eye.
+
+## 2026-10-25: Foliage pass and silhouette rim pass measured, not kept (iteration 8)
+
+- Change: no code kept. Self shadow on by default for foliage (Sky Occlusion 1, blurred over 3 texels) and leaf
+  normals leaned halfway toward the crown's outside were built and measured: both made the tree and the weed tree worse
+  (tree 17.3% to 43.7% wrong pixels at 2 radii with the shadow, 33.4% with the normals; the two trees want opposite
+  amounts of shadow). Translucency wasn't built: the Transmission debug view is black for `foliage.shader`. The rim
+  pass wasn't built: a 4-step trace over every card alone costs at least 40% of the card's GPU time in the dense
+  forest (at least 29% fewer frames per second: the knight forest 34 FPS to 22), twice the plan's 20% limit. Numbers in the iteration 8 README; roadmap item 7 updated.
+- Files: `Benchmarks/iteration-8-card-look/README.md`, `docs/ROADMAP.md`
+- Testing: editor (foliage variants baked and run through the harness; GPU cost measured in play mode).
+
+## 2026-10-25: Coarse min-depth search, Miss Fallback removed (iteration 8, step C)
+
+- Change:
+  - Bake: a map of each view's nearest surface per 16 x 16 texel block (`<name>_fp_depthmin.pfm`, R16, about 0.1 MB),
+    with `g_flFlatpackCoarse` and `g_flFlatpackCoarseBlock` in the material.
+  - Shader: with the map, the search walks each view block by block, skips blocks whose nearest surface the ray never
+    reaches, and samples the rest every Coarse Stride texels (`g_flFlatpackCoarseStride`, default 2), never more than
+    half a shell apart in depth. The shell thickness loses its step-size floor there. Without the map (older bakes) the
+    even-step search is unchanged.
+  - Miss Fallback removed (`g_flFlatpackMissFallback` is ignored): with the coarse search it made five of six models
+    worse (chair 9% to 38% wrong pixels at 2 radii).
+  - The bake check and the see-through fit render the card twenty times before measuring: right after a bake into a
+    new folder the new textures weren't on the GPU yet, and a chair measured 12 radii instead of 4.
+  - Framed see-through bakes no longer thin below Soft Coverage up close (the fit only sees 8 to 32 radii; the fence
+    nearly vanished at 2 radii). Bakes more than half partly covered (fine wire mesh: fence 0.59, weed tree 0.42) bake
+    again unframed, which measured better for the fence.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (+ `.shader_c`),
+  `Libraries/Flatpack/Editor/FlatpackBaker.cs`, `Libraries/Flatpack/Editor/FlatpackQualityCheck.cs`,
+  `Libraries/Flatpack/Code/FlatpackImpostor.cs`, `README.md`, `docs/ROADMAP.md`, `docs/PLAN-card-look.md`,
+  `Benchmarks/iteration-8-card-look/**`, `Benchmarks/README.md`
+- Testing: editor. Seven-model harness: six-model wrong pixels at 2 radii 26.2% (framing alone) to 21.9%; chair holds
+  up from 4 radii at Medium. Dense forest (2,500 cards, three interleaved rounds): tree flat (32 FPS), chair and knight
+  6 to 15% more GPU time than iteration 7's Medium (chair 35.6 ms, 28 FPS, to 37.7 to 40.9 ms, 24 to 27 FPS; knight
+  26.8 ms, 37 FPS, to 29.6 to 30.3 ms, 33 to 34 FPS); 8 x 8 blocks sampled every texel cost 7 to 24% more and were
+  dropped.
+
+## 2026-10-25: Per-view framing and a depth texture of its own (iteration 8, step B)
+
+- Change:
+  - Baker: each view's orthographic camera is fitted to the model's outline in that view (from the vertices, padded
+    two texels), with its own width and height (`CameraComponent.CustomProjectionMatrix`), and its near plane on the
+    view's nearest surface. The bounds go in a 64 x 32 lookup texture (`<name>_fp_frames.png`, uncompressed), read in
+    the vertex shader for the three chosen views. New bake settings Fit Each View (on) and Depth Bits (8).
+  - Depth moves out of the normal atlas's alpha into its own texture, spanning one bounding diameter back from each
+    view's nearest surface: BC4 from `<name>_fp_depth.png` by default, or R16 from `<name>_fp_depth.pfm` with Depth
+    Bits 16 (the texture compiler reads PNGs at 8 bits; a float PFM keeps all 16). The depth bake shader writes 16 bits
+    split over red and green. Normals stay object-space BC7 in `<name>_fp_normal.png`.
+  - Shader: framed bakes (`g_flFlatpackFramed` 1) march only each view's depth range, sample colour, normal and
+    material through an anisotropic filter with the pixel's footprint (framing stretches texels), take the coverage
+    mip from the footprint's shorter axis and the step count from the sphere-equivalent level.
+  - Older bakes keep working unchanged through the material flag (checked: same harness numbers as before); re-bake
+    to get the new look.
+  - Tried and dropped: depth fitted to the object's own depth range (mips made fake surfaces at outlines from 12 radii),
+    two-channel camera-space normals in BC5 (darkened foliage at range by about 7 levels), one mip level for both
+    texel directions (far cards 2 to 12 points worse).
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (+ `.shader_c`),
+  `Libraries/Flatpack/Assets/shaders/flatpack_bake_depth.shader` (+ `.shader_c`), `Libraries/Flatpack/Code/FlatpackMath.cs`,
+  `Libraries/Flatpack/Code/FlatpackImpostor.cs`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `Libraries/Flatpack/Editor/FlatpackBakeSettings.cs`, `Libraries/Flatpack/Editor/FlatpackPfm.cs` (new),
+  `Libraries/Flatpack/UnitTests/FlatpackMathTests.cs`, `README.md`, `Benchmarks/iteration-8-card-look/**`
+- Testing: editor. Seven models baked at Medium with 8 and 16-bit depth and with fitting off; harness against
+  iteration 7 bakes in the same session: six-model wrong pixels at 2 radii 34.9% to 26.2% (B alone, 16-bit); repeated
+  bakes are byte-identical. Memory at Medium about 19 MB with 8-bit depth (was 17), 27 MB with 16-bit. Unit tests:
+  every vertex inside its view's stored bounds, bounds round-trip through bytes; 10 of 10 pass.
+
+## 2026-10-25: Agreement blending, off by default (iteration 8, step A)
+
+- Change: shader dial Agreement (`g_flFlatpackAgreement`, in bounding radii, default 0) and Agreement Range
+  (`g_flFlatpackAgreementRange`). Above 0, a view whose traced hit lies further than the falloff behind the nearest
+  view's hit fades out of the colour, normal, material and depth blend; coverage still blends by the view weights. The
+  fade weakens while the nearest view's share is under a quarter, so view changes stay continuous. The traces now return
+  their hit and blend in `MainPs`; with Agreement 0 the result is the same as before.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (+ `.shader_c`), `Benchmarks/iteration-8-card-look/**`
+- Testing: editor. Falloffs 0.04, 0.08 and 0.15 radii, with and without widening per mip level, on the seven-model set:
+  the chair and the fern about a point better, the knight, dragon, tree and fence 0.3 to 1.5 points worse at 4 to 16
+  radii; six-model average unchanged; chair orbit jump within 4%. On top of B and C, 0.5 points worse. The plan's
+  "done when" isn't met, so it ships off.
+
 ## 2026-10-25: Stray specks off foliage fixed (Edge Floor)
 
 - Change:

@@ -66,9 +66,11 @@ Measured in [`Benchmarks/iteration-5-measure-and-auto`](../Benchmarks/iteration-
 
 ## After that: better looking (iteration 7)
 
-7. **Foliage translucency (M).** Bake the engine's Transmission view into a spare channel and apply the same
-   wrap-and-back-scatter lighting `foliage.shader` uses (`ApplyFoliageLighting`). Fixes: leaves that glow on the real
-   tree look flat on the card (weed tree, ferns).
+7. **Foliage translucency (M). Tried in iteration 8, not done.** The Transmission debug view is black for
+   `foliage.shader` (its wrap and back-scatter are emission, not a material channel), so there's nothing to bake from
+   that view; it would take a per-material bake of the foliage parameters. On the test set the tree card is already
+   9 to 18% brighter than the tree, so added light goes the wrong way there. Self shadow on by default and normals
+   leaned toward the crown's outside were measured instead and made both trees worse (iteration 8).
 8. **Wind on cards (S).** The engine already has global wind values (`g_vWindDirection`); sway the card's top corners a
    little and fade it out with distance, as SpeedTree and Unity do for billboards. Fixes: still trees next to swaying ones.
 9. **Fences and fine mesh (S to M). Done in iteration 7.** Alpha-to-coverage had no effect (no MSAA in the render
@@ -77,13 +79,26 @@ Measured in [`Benchmarks/iteration-5-measure-and-auto`](../Benchmarks/iteration-
    a faint dotted line above the top rail seen from slightly above.
 10. **Metal parts (M). Done in iteration 7.** Materials store metalness in different ways, so the baker solves for it
     from the Reflect view (real against forced 0 and 1) and stores it in the roughness/AO map's alpha.
-11. **Grazing-angle streaks (M).** Flat surfaces seen edge-on (a chair seat at 2 radii) show stair-step streaks at
-    every quality level: the search lands on neighbouring texels of a steep depth slope. Try a filtered final
-    refinement step, or a slope-aware thickness.
+11. **Grazing-angle streaks (M). Done in iteration 8.** Depth in a texture of its own, each view framed to the model,
+    and a coarse min-depth search removed most of the stair steps on the chair seat and the dragon's plinth at 2 radii
+    (six models: 34.9% to 21.9% wrong pixels at 2 radii). A strip at the plinth's far edge remains.
 12. **Why 12 x 12 at 4096 loses at range. Answered in iteration 5:** mip alignment. Levels now use views that halve
     cleanly (Ultra: 256 px).
 13. **Tree pivots (S).** An option to centre the bake on the trunk (Epic's "Center XY On Mesh Pivot"), which removes
     ghosting on trees whose canopy leans off-centre.
+
+## Done in iteration 8: the card's look
+
+Measured in [`Benchmarks/iteration-8-card-look`](../Benchmarks/iteration-8-card-look/README.md), following
+[`PLAN-card-look.md`](PLAN-card-look.md).
+
+- Every view framed to the model's outline and depth, depth in its own BC4 (or R16) texture, a coarse min-depth search
+  that skips empty space, anisotropic sampling for the stretched texels. Wrong pixels at 2 radii 34.9% to 21.9% at
+  Medium for 19 MB instead of 17; GPU time flat to 15% more in the dense forest (up to 13% fewer frames per second).
+- Agreement blending as a dial (off: it cancels out on the test set), Miss Fallback removed, the bake check waits for
+  new textures before measuring, distances in metres beside radii.
+- Tried and dropped: two-channel camera-space normals (darken foliage at range), self shadow and normal smoothing for
+  foliage, a silhouette rim pass (a second trace costs over 40% GPU time, at least 29% fewer frames per second).
 
 ## Easier to live with
 

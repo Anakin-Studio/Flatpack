@@ -107,4 +107,60 @@ public class FlatpackMathTests
 		var box = BBox.FromPoints( points );
 		Assert.IsTrue( radius < box.Size.Length * 0.5f );
 	}
+
+	[TestMethod]
+	public void FrameFitContainsEveryPoint()
+	{
+		// The baker frames each view with these bounds and the shader reads them back from bytes, so every vertex has to
+		// land inside the stored rectangle and depth range, or the card clips the object.
+		var random = new System.Random( 99 );
+		var points = new Vector3[400];
+		for ( var i = 0; i < points.Length; i++ )
+			points[i] = new Vector3( random.Next( -20, 20 ), random.Next( -5, 5 ), random.Next( 0, 120 ) );
+
+		var (center, radius) = FlatpackMath.BoundingSphere( points );
+		for ( var y = 0; y < 12; y++ )
+		{
+			for ( var x = 0; x < 12; x++ )
+			{
+				var dir = FlatpackMath.FrameDirection( x, y, 12, FlatpackLayout.Hemisphere );
+				var fit = FlatpackMath.FitFrame( points, center, radius, dir, 170, 2 );
+				FlatpackMath.FrameBasis( dir, out var right, out var up );
+
+				foreach ( var p in points )
+				{
+					var rel = p - center;
+					var u = 0.5f + Vector3.Dot( rel, right ) / (2.0f * radius);
+					var v = 0.5f - Vector3.Dot( rel, up ) / (2.0f * radius);
+					var h = Vector3.Dot( rel, dir ) / radius;
+					Assert.IsTrue( u >= fit.Min.x - Epsilon && u <= fit.Max.x + Epsilon, $"frame ({x},{y}): u {u} outside {fit.Min.x}..{fit.Max.x}" );
+					Assert.IsTrue( v >= fit.Min.y - Epsilon && v <= fit.Max.y + Epsilon, $"frame ({x},{y}): v {v} outside {fit.Min.y}..{fit.Max.y}" );
+					Assert.IsTrue( h <= fit.Near + Epsilon && h >= fit.Far - Epsilon, $"frame ({x},{y}): height {h} outside {fit.Far}..{fit.Near}" );
+				}
+
+				// A tall, thin object should fill far more of its frames than the sphere does.
+				Assert.IsTrue( (fit.Max.x - fit.Min.x) * (fit.Max.y - fit.Min.y) < 0.9f, $"frame ({x},{y}) is barely tighter than the sphere" );
+			}
+		}
+	}
+
+	[TestMethod]
+	public void FrameFitBytesRoundTrip()
+	{
+		// What the baker renders with is what it decodes from the bytes it stores, so encoding a decoded fit again must
+		// give the same bytes.
+		var fit = new FlatpackMath.FrameFit { Min = new Vector2( 0.21f, 0.03f ), Max = new Vector2( 0.77f, 0.98f ), Near = 0.62f, Far = -0.41f };
+		var bytes = FlatpackMath.EncodeFrameFit( fit );
+		var again = FlatpackMath.EncodeFrameFit( FlatpackMath.DecodeFrameFit( bytes ) );
+		Assert.AreEqual( bytes.Rect, again.Rect );
+		Assert.AreEqual( bytes.Depth, again.Depth );
+	}
+
+	[TestMethod]
+	public void MetresMatchTheIteration6Sheet()
+	{
+		// "6 radii (21 m)" for the hero tree, 140.08 units in radius.
+		Assert.AreEqual( "21 m", FlatpackMath.FormatMetres( 6.0f * 140.08f ) );
+		Assert.AreEqual( "4.1 m", FlatpackMath.FormatMetres( 6.0f * 27.05f ) );
+	}
 }

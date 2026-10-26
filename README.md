@@ -69,13 +69,18 @@ the card looks the same (measured after every bake, 6 bounding radii for this tr
 2,500 of these trees drew in 17 to 21 ms with the hybrid against 32 to 62 ms as real models only (four runs each on an
 RTX 3090; details in [iteration 6](Benchmarks/iteration-6-real-scenes/README.md#real-model-up-close-card-far)).
 
-| Kind of model | Card holds up from | On a 1080p screen |
-|---|---|---|
-| Solid shapes: rocks, cacti, statues | 1.5 to 4 bounding radii | 220 to 760 px tall |
-| Vehicles and props | about 3 radii | about 300 px tall |
-| Trees and ferns | 6 to 8 radii | 130 to 160 px tall |
-| Thin spindles, twigs | about 16 radii | about 60 px tall |
-| Fine wire mesh (fences) | about 6 radii at Ultra (see-through bakes, iteration 7) | about 160 px tall |
+| Kind of model | Card holds up from | On a 1080p screen | For example |
+|---|---|---|---|
+| Solid shapes: rocks, cacti, statues | 1.5 to 4 bounding radii | 220 to 760 px tall | knight statue, 0.42 m radius: 0.6 to 1.7 m |
+| Vehicles and props | about 3 radii | about 300 px tall | wooden chair, 0.69 m radius: 2.1 m |
+| Trees and ferns | 6 to 8 radii | 130 to 160 px tall | Tree_small_03, 0.81 m radius: 4.9 to 6.5 m |
+| Thin spindles, twigs | about 16 radii | about 60 px tall | weed tree, 1.48 m radius: 24 m |
+| Fine wire mesh (fences) | about 6 radii at Ultra (see-through bakes, iteration 7) | about 160 px tall | fence panel, 1.99 m radius: 12 m |
+
+Distances in radii scale with the model; metres are radii times its bounding radius (s&box units are inches). The table
+is from iteration 3's harness; iteration 8's framed views and coarse search brought the chair from 6 radii to 4 and the
+fern from 6 to 3 by the bake check
+([iteration 8](Benchmarks/iteration-8-card-look/README.md)).
 
 The default swap happens at 30 radii, well past all of these. Full per-model numbers:
 [`Benchmarks/iteration-3-ten-models`](Benchmarks/iteration-3-ten-models/README.md).
@@ -86,13 +91,14 @@ Pick a level when you bake, or pick **Auto** and let the baker choose. Medium is
 
 | Level | Views | Atlas | Search steps | Video memory | Use it for |
 |---|---|---|---|---|---|
-| Low | 12 x 12 | 1024 | 8 | 4 MB | Props you only see from far away |
-| **Medium** | 12 x 12 | 2048 | 16 | 16 MB | Almost everything |
-| High | 24 x 24 | 4096 | 16 | 64 MB | Large props you see from mid range |
-| Ultra | 12 x 12 | 3072 | 32 | 36 MB | Thin or detailed props that swap near the camera |
+| Low | 12 x 12 | 1024 | 8 | 5 MB | Props you only see from far away |
+| **Medium** | 12 x 12 | 2048 | 16 | 19 MB | Almost everything |
+| High | 24 x 24 | 4096 | 16 | 75 MB | Large props you see from mid range |
+| Ultra | 12 x 12 | 3072 | 32 | 42 MB | Thin or detailed props that swap near the camera |
 | Auto | picks one | | | | Bakes at Low, checks the card against the model, and steps up until it holds up from your swap distance |
 
-Ultra and the 32 search steps cost about 1.5 times Medium's GPU time where cards fill the screen; the other levels cost
+Memory includes the 8-bit depth texture each bake has had since iteration 8; Depth Bits 16 adds about half again
+(Medium 27 MB). Ultra and the 32 search steps cost about 1.5 times Medium's GPU time where cards fill the screen; the other levels cost
 about the same as Medium. Every bake is supersampled 2x (thin parts bake as partial coverage) and checked against the
 model afterwards: the bake stores the distance from which the card looks like the model, and the Flatpack Renderer
 swaps there. The check was calibrated against a person's judgement
@@ -119,8 +125,8 @@ everywhere, with their own LODs.
 
 | Model | Native | Flatpack, best swap | Swap at |
 |---|---|---|---|
-| Tree (534,000 triangles) | 28.8 ms | **10.0 ms** | 8 radii, where the card starts to look right |
-| Knight statue (3,800 triangles) | 5.7 ms | **3.5 ms** | 30 radii |
+| Tree (534,000 triangles) | 28.8 ms | **10.0 ms** | 8 radii (28 m), where the card starts to look right |
+| Knight statue (3,800 triangles) | 5.7 ms | **3.5 ms** | 30 radii (13 m) |
 | Wooden chair (912 triangles) | **1.9 ms** | 3.6 ms | (cheaper as a real model) |
 
 Heavy models gain the most, and only if the card takes over as soon as it looks right: at 30 radii the tree forest
@@ -249,12 +255,16 @@ quad's position and size and builds the card from the bake data and the instance
 | Bake Self Shadow | off | Bakes how much sky each part sees; see Sky Occlusion below. Triples bake time. |
 | Supersample | 2 | Render each view this much larger and average down. 2 keeps thin parts as partial coverage; 4 adds little. |
 | Edge Padding | 16 | Texels of colour grown past each silhouette, so mipmaps don't halo. |
+| Fit Each View | on | Frame every view to the model's own outline and depth instead of its bounding sphere: more texels and finer depth on the object. Fine wire mesh bakes unframed regardless. |
+| Depth Bits | 8 | 8 (BC4) or 16 (R16, about 8 MB more at Medium): 16 had 2 points fewer wrong pixels up close. |
 | Output Folder | next to the model | Relative to `Assets`. |
 
 The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, set by the
 quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Edge Floor** (how much of Alpha Clip an edge pixel
 needs before it's drawn; stops stray specks), **Metalness** (added to the baked metalness),
-**Shadow Bias**, **Miss Fallback** (keeps some sub-step twigs at the cost of ghosting, off by default), **Sky Occlusion**
+**Shadow Bias**, **Coarse Stride** (texels between samples where the search can hit something; 1 is slower and
+finds the thinnest parts), **Agreement** (fades out views whose surface lies behind the nearest one; off by
+default, measured in iteration 8), **Sky Occlusion**
 (darkens enclosed parts using the self-shadow bake, for dense foliage) and, for see-through bakes, **Soft Coverage** and
 **Soft Growth** (the baker fits both to the model). The baker also writes per-mip alpha corrections it measured from the atlas, so
 thin parts keep their coverage as the card shrinks.
@@ -263,25 +273,29 @@ thin parts keep their coverage as the card shrinks.
 
 **Bake.** Flatpack opens a private scene with nothing in it but your model and an orthographic camera, and renders it
 from each grid direction through s&box's debug views: albedo, world normals, roughness and AO come out as raw material
-data with no lighting or tonemapping. A small helper shader writes linear depth. The frames go into three atlases, and
-the baker grows colour into the empty space around each silhouette so filtering can't pull in the background.
+data with no lighting or tonemapping. A small helper shader writes linear depth at 16 bits. Each view's camera is fitted
+to the model's outline and depth in that view, so the model fills the frame. The frames go into albedo, normal, depth and
+material atlases, plus a small map of the nearest surface in every 16 x 16 texel block, and the baker grows colour into
+the empty space around each silhouette so filtering can't pull in the background.
 
 **Draw.** The vertex shader turns the quad toward the camera, on the front face of the model's bounding sphere. The
 pixel shader picks the three baked views nearest your view direction, with barycentric weights. For each one it traces
 the pixel's view ray through that view's depth map until it hits the baked surface, so all three land on the same
-point of the model and agree. It blends them, rotates the baked normals by the object's rotation, writes the real
+point of the model and agree. The block map lets the trace skip empty space in one step and sample closely only where it
+can hit something, so thin parts aren't stepped over. It blends them, rotates the baked normals by the object's rotation, writes the real
 surface depth, and shades the result with the standard s&box lighting, shadows and fog. The shader promises the GPU
 that this depth is never nearer than the card itself, so pixels hidden behind other cards are thrown away before the
 trace runs (6 to 29% less GPU time in a dense forest).
 
 ## Limits
 
-- Up close the card is only as sharp as one frame: about 170 pixels across at Medium. Flat surfaces seen at a grazing
-  angle (a chair seat at 2 radii) show stair-step streaks at every level.
+- Up close the card is only as sharp as one frame: about 170 pixels across at Medium, now with the model filling it.
+  Flat surfaces seen at a grazing angle (the far edge of the dragon's plinth at 2 radii) still show some broken texels.
 - In a dense crowd seen from inside, cards can cost more GPU time than simple models (a 912-triangle chair: 1.9 ms as
   models, 7.3 ms as cards). Cards pay off at a distance; that's what the swap distance is for.
 - Hemisphere bakes can't show an object from below. Use Sphere for those.
-- Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting.
+- Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting. Baking
+  self shadow on by default and leaning leaf normals outward were tried in iteration 8 and made both test trees worse.
 - Very thin parts (twigs, spindles) thinner than one texel can't survive the bake. Wire mesh works from about 6 radii
   at Ultra (the baker spots it and fits the card to the model), but past 24 radii it speckles where the real fence
   shows a tidy grid. A light fence is also cheaper to draw as itself: 2,500 fences took 14.0 ms as models and 15.0 to

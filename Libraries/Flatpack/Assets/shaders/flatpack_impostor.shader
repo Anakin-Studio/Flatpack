@@ -6,6 +6,10 @@
 // re-projects its view ray into each frame (with a depth-based parallax step), blends them, and shades the
 // result through the standard s&box shading model so it lights, fogs and casts shadows like a normal mesh.
 //
+// Bakes from iteration 8 on (g_flFlatpackFramed = 1) fit every frame to the object's outline and depth in that view
+// (g_tFlatpackFrames), keep depth in its own texture, and search it two-level through a coarse min-depth map. Older
+// bakes keep sphere-sized frames, depth in the normal atlas's alpha and the even-step search.
+//
 // The frame layout and the per-frame camera basis must match FlatpackMath.cs exactly. If you change one,
 // change the other.
 //=========================================================================================================================
@@ -157,6 +161,34 @@ COMMON
 		// An orthographic projection has (0, 0, 0, 1) as its last row; a perspective one has 0 in the corner.
 		return abs( g_matViewToProjection[3][3] ) > 0.5;
 	}
+
+	// 1 for bakes from iteration 8 on: every frame is framed to its own bounds (see g_tFlatpackFrames), normals are stored
+	// per frame in their own texture and depth has a 16-bit texture of its own. 0 for older bakes, which keep their
+	// sphere-sized frames and depth in the normal atlas's alpha.
+	float g_flFlatpackFramed < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/55" ); >;
+
+	// Per-frame bounds the baker fitted, one pair of texels per frame: texel (x, y) holds the frame's image rectangle
+	// inside the bounding sphere's frame (left, top, right as 0..1), texel (x + 32, y) its bottom and its depth range
+	// (nearest and furthest surface height along the frame direction, -1..1 radii mapped to 0..1). Read in the vertex
+	// shader for the three chosen frames only.
+	CreateInputTexture2D( TextureFrames, Linear, 8, "", "_frames", "Flatpack Atlas,20/50", Default4( 0.0, 0.0, 1.0, 1.0 ) );
+	Texture2D g_tFlatpackFrames < Channel( RGBA, Box( TextureFrames ), Linear ); OutputFormat( RGBA8888 ); SrgbRead( false ); >;
+
+	// The fitted bounds of one frame: image rectangle (min uv, max uv) in the sphere's frame, and the nearest and
+	// furthest surface heights along the frame direction, in bounding radii.
+	void FlatpackFrameFit( float2 frame, out float4 rect, out float2 range )
+	{
+		rect = float4( 0.0, 0.0, 1.0, 1.0 );
+		range = float2( 1.0, -1.0 );
+		if ( g_flFlatpackFramed < 0.5 )
+			return;
+
+		int2 texel = int2( frame );
+		float3 a = g_tFlatpackFrames.Load( int3( texel, 0 ) ).rgb;
+		float3 b = g_tFlatpackFrames.Load( int3( texel + int2( 32, 0 ), 0 ) ).rgb;
+		rect = float4( a.xy, a.z, b.x );
+		range = b.yz * 2.0 - 1.0;
+	}
 }
 
 //=========================================================================================================================
@@ -180,6 +212,11 @@ struct PixelInput
 	nointerpolation float4 vFpRow0        : TEXCOORD15;	// object -> world matrix rows
 	nointerpolation float4 vFpRow1        : TEXCOORD16;
 	nointerpolation float4 vFpRow2        : TEXCOORD17;
+	nointerpolation float4 vFpRect0       : TEXCOORD18;	// each frame's image rectangle (see FlatpackFrameFit)
+	nointerpolation float4 vFpRect1       : TEXCOORD19;
+	nointerpolation float4 vFpRect2       : TEXCOORD20;
+	nointerpolation float4 vFpRange01     : TEXCOORD21;	// frame 0 near, far, frame 1 near, far
+	nointerpolation float2 vFpRange2      : TEXCOORD22;	// frame 2 near, far
 };
 
 //=========================================================================================================================
@@ -279,6 +316,14 @@ VS
 		o.vFpFrame2 = float4( f2, 0, 0 );
 		o.vFpWeights = w;
 
+		// The three frames' fitted bounds, read once here instead of per pixel.
+		float2 range0, range1, range2;
+		FlatpackFrameFit( f0, o.vFpRect0, range0 );
+		FlatpackFrameFit( f1, o.vFpRect1, range1 );
+		FlatpackFrameFit( f2, o.vFpRect2, range2 );
+		o.vFpRange01 = float4( range0, range1 );
+		o.vFpRange2 = range2;
+
 		o.vFpRow0 = m[0];
 		o.vFpRow1 = m[1];
 		o.vFpRow2 = m[2];
@@ -313,7 +358,39 @@ PS
 	Texture2D g_tFlatpackNormalDepth < Channel( RGBA, Box( TextureNormalDepth ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
 	Texture2D g_tFlatpackRoughnessAo < Channel( RGBA, Box( TextureRoughnessAo ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
 
+	// Framed bakes (g_flFlatpackFramed = 1) keep normal and depth apart, so depth no longer shares BC7 blocks with the
+	// normal. Depth gets 16 bits of its own, 0 at the frame's nearest surface and 1 a bounding diameter behind it,
+	// instead of 8 bits over the whole sphere. Normals stay object-space RGB: a two-channel camera-space encoding (BC5)
+	// was tried and its mips pulled the varied normals of foliage toward the camera, darkening a fern at range by about
+	// 7 levels (iteration 8).
+	CreateInputTexture2D( TextureNormal, Linear, 8, "", "_normal", "Flatpack Atlas,20/22", Default4( 0.5, 0.5, 1.0, 1.0 ) );
+	CreateInputTexture2D( TextureDepth, Linear, 16, "", "_depth", "Flatpack Atlas,20/24", Default4( 1.0, 1.0, 1.0, 1.0 ) );
+	CreateInputTexture2D( TextureDepthBC4, Linear, 8, "", "_depth8", "Flatpack Atlas,20/26", Default4( 1.0, 1.0, 1.0, 1.0 ) );
+
+	Texture2D g_tFlatpackNormal  < Channel( RGB, Box( TextureNormal ), Linear ); OutputFormat( BC7 ); SrgbRead( false ); >;
+
+	// 16-bit depth needs a float source (.pfm): the texture compiler reads PNGs at 8 bits whatever their depth. The BC4
+	// slot takes an 8-bit PNG for a quarter of the memory (Depth Bits 8 in the bake settings).
+	Texture2D g_tFlatpackDepth   < Channel( R, Box( TextureDepth ), Linear ); OutputFormat( R16 ); SrgbRead( false ); >;
+	Texture2D g_tFlatpackDepth8  < Channel( R, Box( TextureDepthBC4 ), Linear ); OutputFormat( ATI1N ); SrgbRead( false ); >;
+
+	// Coarse depth (framed bakes from step C on): each texel holds the nearest surface in one block of a frame,
+	// blocks laid out per frame like the atlas (see FlatpackCoarseSearch). Same 0..1 scale as the depth atlas.
+	CreateInputTexture2D( TextureDepthMin, Linear, 16, "", "_depthmin", "Flatpack Atlas,20/28", Default4( 0.0, 0.0, 0.0, 1.0 ) );
+	Texture2D g_tFlatpackDepthMin < Channel( R, Box( TextureDepthMin ), Linear ); OutputFormat( R16 ); SrgbRead( false ); >;
+
+	// 1 when the bake has the coarse depth map: the search then skips empty blocks and marches the rest a texel at a time.
+	float g_flFlatpackCoarse < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/57" ); >;
+
+	// Which depth texture a framed bake filled: 16 for R16, 8 for BC4.
+	float g_flFlatpackDepthBits < Default( 16.0 ); Range( 8.0, 16.0 ); UiGroup( "Flatpack,10/56" ); >;
+
 	SamplerState g_sFlatpack < Filter( TRILINEAR ); AddressU( CLAMP ); AddressV( CLAMP ); >;
+
+	// Framed bakes stretch a view's texels to fit its outline (a flat fern seen from the side gets about three times as
+	// many texels down as across), so one mip level for both directions blurs the longer one. Those bakes sample colour,
+	// normal and material with the pixel's real footprint through an anisotropic filter instead.
+	SamplerState g_sFlatpackAniso < Filter( ANISOTROPIC ); AddressU( CLAMP ); AddressV( CLAMP ); >;
 
 	// The depth search reads unfiltered full-resolution depth. Filtering or mips would blend the object's depth with the
 	// far-plane background at every silhouette and the ray would land on those fake slopes, drawing streaky skirts.
@@ -363,7 +440,9 @@ PS
 
 	// How fast a see-through card gets denser as it shrinks on screen: coverage scales by 2^(growth) each time the card's
 	// texels per pixel double. A real alpha-tested mesh thickens with distance (its own mips keep the wires above the cut,
-	// long before the card's coarser atlas reaches its first mip); the baker fits this against the model.
+	// long before the card's coarser atlas reaches its first mip); the baker fits this against the model. Framed bakes
+	// never thin below Soft Coverage up close: the fit only sees 8 to 32 radii, and a steep fitted growth made the fence
+	// all but vanish at 2 radii (iteration 8).
 	float g_flFlatpackSoftGrowth < Default( 0.0 ); Range( 0.0, 2.0 ); UiGroup( "Flatpack,10/81" ); >;
 
 	// How much the baked sky visibility (bake option "Bake Self Shadow") darkens the card: fully for ambient light, half
@@ -371,13 +450,19 @@ PS
 	// foliage that should keep a dark interior at a distance.
 	float g_flFlatpackSkyOcclusion < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/77" ); >;
 
-	// 1: a ray that finds no surface in a view samples that view at the bounds' centre plane instead of skipping it.
-	// Keeps very thin parts that the search steps over, at the cost of some ghosting.
-	float g_flFlatpackMissFallback < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/74" ); >;
-
 	// Blend weight exponent. 1 is plain barycentric blending (widest, softest crossfade); higher values hold each frame
 	// alone for longer and crossfade over a narrower band, so less of the turn shows two frames at once.
 	float g_flFlatpackBlendSharpness < Default( 1.0 ); Range( 1.0, 8.0 ); UiGroup( "Flatpack,10/75" ); >;
+
+	// Agreement falloff, as a fraction of the bounding radius. A frame whose trace landed this far or further behind the
+	// nearest frame's hit drops out of the colour, normal, material and depth blend (see FlatpackAgreement), which stops
+	// two surfaces showing at once where the views disagree. 0 blends by view weight alone, as before iteration 8.
+	// Off by default: on 8-bit sphere-range depth it helped the chair and fern by about a point of wrong pixels but cost
+	// the solid statues up to a point and a half at 4 to 16 radii (iteration 8, step A).
+	float g_flFlatpackAgreement < Default( 0.0 ); Range( 0.0, 0.5 ); UiGroup( "Flatpack,10/76" ); >;
+
+	// How fast the agreement falloff widens as the card shrinks: it doubles this many times per mip level.
+	float g_flFlatpackAgreementRange < Default( 1.0 ); Range( 0.0, 4.0 ); UiGroup( "Flatpack,10/78" ); >;
 
 	// Depth-pass push-back, as a fraction of the bounding radius. The shadow pass rebuilds the surface from the frames
 	// nearest the light and the main view from the frames nearest the camera; the two never agree exactly (8-bit depth,
@@ -407,14 +492,14 @@ PS
 		float flDepth : SV_DepthLessEqual;
 	};
 
-	// What the three frames add up to at one pixel. Everything is summed with weight * coverage.
+	// What one frame sees at one pixel: the surface its trace landed on, unweighted. Alpha 0 means the frame saw nothing.
 	struct FlatpackSample
 	{
 		float Alpha;
 		float3 Albedo;
 		float3 Normal;
 		float4 RoughnessAoSky;	// roughness, material AO, baked sky visibility, baked metalness (encoded, see g_flFlatpackBakedMetal)
-		float3 HitOs;
+		float T;				// where along the view ray (P + R t) the trace hit
 	};
 
 	float FlatpackBayer4( float2 pixel )
@@ -436,28 +521,149 @@ PS
 		return 0.5 + float2( dot( hit, right ), -dot( hit, up ) ) / ( 2.0 * g_flFlatpackRadius );
 	}
 
-	// Height of the ray above the baked surface at one point of a frame (negative once the ray is behind it). Outside the
-	// frame there is nothing, which reads as the far plane.
-	float FlatpackDepthGap( float2 frame, float2 uv, float rayHeight, float n, float rad, float lod )
+	// Height of the ray above the baked surface at one point of a frame (negative once the ray is behind it). uv is in the
+	// frame's own image; nearest is the frame's nearest surface height (world units). Depth 0..1 spans one bounding
+	// diameter back from there, so the background (1) always lies at least that far behind the object, out of the
+	// search's reach. Fitting the encoding to the object's own depth instead put the background just behind it, and mips
+	// that average an outline with the background then read as real surfaces: the card grew and speckled from about 12
+	// radii. Outside the frame there is nothing, which reads as the far plane.
+	float FlatpackDepthGap( float2 frame, float2 uv, float rayHeight, float n, float nearest, float rad, float lod )
 	{
 		float depth01 = 1.0;
 		if ( all( uv >= 0.0 ) && all( uv <= 1.0 ) )
-			depth01 = g_tFlatpackNormalDepth.SampleLevel( g_sFlatpackPoint, ( frame + uv ) / n, lod ).a;
+		{
+			float2 atlasUv = ( frame + uv ) / n;
+			if ( g_flFlatpackFramed < 0.5 )
+				depth01 = g_tFlatpackNormalDepth.SampleLevel( g_sFlatpackPoint, atlasUv, lod ).a;
+			else if ( g_flFlatpackDepthBits > 12.0 )
+				depth01 = g_tFlatpackDepth.SampleLevel( g_sFlatpackPoint, atlasUv, lod ).r;
+			else
+				depth01 = g_tFlatpackDepth8.SampleLevel( g_sFlatpackPoint, atlasUv, lod ).r;
+		}
 
-		return rayHeight - ( 1.0 - 2.0 * depth01 ) * rad;
+		return rayHeight - ( nearest - 2.0 * rad * depth01 );
 	}
 
-	// Trace one frame and add what it sees to the sum.
+	// One colour or material lookup: trilinear at the shared mip level for older bakes, anisotropic with the pixel's
+	// footprint (gx, gy: atlas uv per screen pixel) for framed ones.
+	float4 FlatpackAtlasSample( Texture2D tex, float2 atlasUv, float lod, float2 gx, float2 gy )
+	{
+		if ( g_flFlatpackFramed < 0.5 )
+			return tex.SampleLevel( g_sFlatpack, atlasUv, lod );
+		return tex.SampleGrad( g_sFlatpackAniso, atlasUv, gx, gy );
+	}
+
+	// A baked normal, in object space (n * 0.5 + 0.5 in both kinds of bake).
+	float3 FlatpackBakedNormal( float2 atlasUv, float lod, float2 gx, float2 gy )
+	{
+		if ( g_flFlatpackFramed < 0.5 )
+			return g_tFlatpackNormalDepth.SampleLevel( g_sFlatpack, atlasUv, lod ).rgb * 2.0 - 1.0;
+
+		return g_tFlatpackNormal.SampleGrad( g_sFlatpackAniso, atlasUv, gx, gy ).rgb * 2.0 - 1.0;
+	}
+
+	// Texels per side of one coarse depth block (the baker writes it with the map).
+	float g_flFlatpackCoarseBlock < Default( 16.0 ); Range( 4.0, 32.0 ); UiGroup( "Flatpack,10/58" ); >;
+
+	// Texels between full-resolution samples inside a block the ray can reach. Measured in iteration 8 on the dense
+	// forest: 8-texel blocks sampled every texel cost 7 to 24% more GPU time than the plain search; 16-texel blocks
+	// every 2 texels cost about the same as it and looked as good (21.9% wrong pixels at 2 radii against 22.8).
+	float g_flFlatpackCoarseStride < Default( 2.0 ); Range( 1.0, 4.0 ); UiGroup( "Flatpack,10/59" ); >;
+
+	// Two-level search of one frame, for bakes with a coarse depth map. The ray walks the frame block by block (16 x 16
+	// texels by default). A block whose nearest surface is still below the ray where the ray leaves it holds nothing the
+	// ray can touch, and is skipped in one step. Only blocks the ray can reach are marched at full resolution, a sample
+	// every Coarse Stride texels at the search mip and never more than half a shell apart in depth, so thin parts aren't
+	// stepped over the way the even steps of the plain search step over them. budget caps the full-resolution samples.
+	//
+	// Returns whether it found a surface, with the last sample in front of it (tIn) and the first one on it (tOut).
+	bool FlatpackCoarseSearch( float2 frame, float2 uvP, float2 uvPerT, float heightP, float denom, float tFront, float tBack,
+		float n, float cell, float nearest, float rad, float depthLod, float thickness, int budget, out float tIn, out float tOut )
+	{
+		tIn = tFront;
+		tOut = tFront;
+
+		// Only the stretch of ray inside the frame's image matters: outside it there is only background.
+		float2 safe = float2( abs( uvPerT.x ) > 1e-7 ? uvPerT.x : 1e-7, abs( uvPerT.y ) > 1e-7 ? uvPerT.y : 1e-7 );
+		float2 ta = -uvP / safe;
+		float2 tb = ( 1.0 - uvP ) / safe;
+		float2 tEnter = min( ta, tb );
+		float2 tLeave = max( ta, tb );
+		float t0 = max( tFront, max( tEnter.x, tEnter.y ) );
+		float tEnd = min( tBack, min( tLeave.x, tLeave.y ) );
+		if ( t0 >= tEnd )
+			return false;
+
+		float blocks = ceil( cell / g_flFlatpackCoarseBlock );
+		float blockUv = g_flFlatpackCoarseBlock / cell;
+		float sampleTexels = exp2( depthLod ) * g_flFlatpackCoarseStride;
+		float tiny = ( tBack - tFront ) * 1e-4;
+		int used = 0;
+
+		[loop]
+		for ( int k = 0; k < 64; k++ )
+		{
+			if ( t0 >= tEnd || used >= budget )
+				break;
+
+			// The block the ray is in, and where it leaves it.
+			float2 b = clamp( floor( ( uvP + uvPerT * ( t0 + tiny ) ) / blockUv ), 0.0, blocks - 1.0 );
+			float2 lo = b * blockUv;
+			float2 hi = min( ( b + 1.0 ) * blockUv, 1.0 );
+			float tx = uvPerT.x > 1e-7 ? ( hi.x - uvP.x ) / uvPerT.x : ( uvPerT.x < -1e-7 ? ( lo.x - uvP.x ) / uvPerT.x : 100000000.0 );
+			float ty = uvPerT.y > 1e-7 ? ( hi.y - uvP.y ) / uvPerT.y : ( uvPerT.y < -1e-7 ? ( lo.y - uvP.y ) / uvPerT.y : 100000000.0 );
+			float t1 = clamp( min( tx, ty ), t0 + tiny, tEnd );
+
+			// The highest surface in the block. The ray only drops as it goes (denom < 0), so if it's still above that
+			// where it leaves, the block is empty for this ray.
+			float blockNearest = g_tFlatpackDepthMin.Load( int3( int2( frame * blocks + b ), 0 ) ).r;
+			float top = nearest - 2.0 * rad * blockNearest;
+			if ( heightP + denom * t1 <= top )
+			{
+				float texelsCrossed = length( uvPerT * ( t1 - t0 ) ) * cell / sampleTexels;
+				float depthCrossed = -denom * ( t1 - t0 );
+				int count = (int)clamp( ceil( max( texelsCrossed, depthCrossed / ( thickness * 0.5 ) ) ), 1.0, 16.0 );
+
+				float tPrev = t0;
+				[loop]
+				for ( int j = 1; j <= count; j++ )
+				{
+					float t = lerp( t0, t1, (float)j / count );
+					float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, heightP + denom * t, n, nearest, rad, depthLod );
+					if ( gap <= 0.0 && gap >= -thickness )
+					{
+						tIn = tPrev;
+						tOut = t;
+						return true;
+					}
+					tPrev = t;
+				}
+				used += count;
+			}
+
+			t0 = t1;
+		}
+
+		return false;
+	}
+
+	// Trace one frame and return what it sees.
 	//
 	// In a frame's own space the view ray is a straight line: its image position and its height toward the frame camera
-	// both change linearly with t. The ray enters the bounds at height +r and leaves at -r; we step along it and stop at
-	// the first sample where the ray has dropped below the baked surface height (from the depth channel), then refine
-	// with one secant step. Texels outside the silhouette were baked at the far plane, so a ray that only passes
-	// background never "hits" and the frame contributes nothing there instead of a ghost.
-	void FlatpackSampleFrame( float2 frame, float weight, float3 P, float3 R, int mode, float n, float lod, inout FlatpackSample s )
+	// both change linearly with t. The ray enters the frame's depth range at its nearest surface height and leaves at its
+	// furthest; we step along it and stop at the first sample where the ray has dropped below the baked surface height
+	// (from the depth channel), then refine with binary steps. Texels outside the silhouette were baked at the far plane,
+	// so a ray that only passes background never "hits" and the frame contributes nothing there instead of a ghost.
+	//
+	// rect and rangeRadii are the frame's fitted bounds (see FlatpackFrameFit); older bakes pass the whole sphere.
+	//
+	// grad is how far the sphere-sized frame's image moves per screen pixel (ddx, ddy); lodSphere is the mip level that
+	// footprint gives on the sphere-sized frame, which sets the step count.
+	FlatpackSample FlatpackSampleFrame( float2 frame, float weight, float4 rect, float2 rangeRadii, float3 P, float3 R, int mode, float n, float lod, float4 grad, float lodSphere, float cell )
 	{
+		FlatpackSample s = (FlatpackSample)0;
 		if ( weight <= 0.0 )
-			return;
+			return s;
 
 		float3 d = FlatpackFrameDirection( frame, mode, n );
 		float3 right, up;
@@ -468,15 +674,18 @@ PS
 
 		// The ray must travel away from this frame's camera. For the three nearest frames it always does; guard anyway.
 		if ( denom > -1e-5 )
-			return;
+			return s;
 
+		// Image position in the sphere-sized frame, then mapped into the frame's own rectangle.
 		float3 toP = P - g_vFlatpackCenter;
 		float heightP = dot( toP, d );
-		float2 uvP = 0.5 + float2( dot( toP, right ), -dot( toP, up ) ) / ( 2.0 * rad );
-		float2 uvPerT = float2( dot( R, right ), -dot( R, up ) ) / ( 2.0 * rad );
+		float2 rectSize = rect.zw - rect.xy;
+		float2 uvP = ( 0.5 + float2( dot( toP, right ), -dot( toP, up ) ) / ( 2.0 * rad ) - rect.xy ) / rectSize;
+		float2 uvPerT = float2( dot( R, right ), -dot( R, up ) ) / ( 2.0 * rad ) / rectSize;
 
-		float tFront = ( rad - heightP ) / denom;
-		float tBack = ( -rad - heightP ) / denom;
+		float2 range = rangeRadii * rad;
+		float tFront = ( range.x - heightP ) / denom;
+		float tBack = ( range.y - heightP ) / denom;
 
 		float tHit = 0.0;
 		bool hit = false;
@@ -487,8 +696,12 @@ PS
 		// Search the depth mip that matches the pixel's footprint. Full-resolution depth on a small card turns every
 		// pixel into a lottery between neighbouring texels, which sparkles as the camera moves.
 		float depthLod = floor( lod );
+
+		// The step count follows the mip level the sphere-sized frame would have used. A fitted frame packs more texels
+		// on the object, so it reaches each mip level at a larger screen size; cutting steps by its own level halved them
+		// from about 12 radii and broke up thin parts (iteration 8).
 		if ( steps > 0 )
-			steps = max( min( 4, steps ), (int)( steps / exp2( floor( lod ) ) ) );
+			steps = max( min( 4, steps ), (int)( steps / exp2( floor( lodSphere ) ) ) );
 
 		if ( steps <= 0 )
 		{
@@ -499,42 +712,54 @@ PS
 		else
 		{
 			float tPrev = tFront;
+			float tNext = tFront;
 
 			// A depth map is a single layer with no back side, so treat each baked surface as a shell this thick. A ray
 			// that lands deeper than that behind the surface went past its edge (the steep wall where a silhouette drops
 			// to background, or a gap between leaves) and keeps searching, instead of stretching that edge into streaks.
-			// Never thinner than one step, or the search could step clean over a surface.
-			float thickness = max( g_flFlatpackThickness, 1.5 / steps ) * 2.0 * rad;
+			// Never thinner than one and a half steps, or the search could step clean over a surface.
+			float thickness = max( g_flFlatpackThickness * 2.0 * rad, 1.5 * ( range.x - range.y ) / steps );
 			float continuity = g_flFlatpackContinuity * 2.0 * rad;
 			bool crossed = false;
 
-			// The ray enters the bounds above the surface (or over background, which reads as the far plane).
-			float gapPrev = FlatpackDepthGap( frame, uvP + uvPerT * tFront, heightP + denom * tFront, n, rad, depthLod );
-			float surfPrev = ( heightP + denom * tFront ) - gapPrev;
-
-			[loop]
-			for ( int k = 1; k <= steps; k++ )
+			if ( g_flFlatpackCoarse > 0.5 )
 			{
-				float t = lerp( tFront, tBack, (float)k / steps );
-				float rayH = heightP + denom * t;
-				float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, rayH, n, rad, depthLod );
-				if ( gap <= 0.0 && gap >= -thickness )
-				{
-					hit = true;
-					break;
-				}
+				// The coarse search samples every texel it marches, so the shell needs no floor tied to a step size.
+				thickness = g_flFlatpackThickness * 2.0 * rad;
+				hit = FlatpackCoarseSearch( frame, uvP, uvPerT, heightP, denom, tFront, tBack, n, cell, range.x, rad, depthLod, thickness, steps * 2, tPrev, tNext );
+			}
+			else
+			{
+				// The ray enters the bounds above the surface (or over background, which reads as the far plane).
+				float gapPrev = FlatpackDepthGap( frame, uvP + uvPerT * tFront, heightP + denom * tFront, n, range.x, rad, depthLod );
+				float surfPrev = ( heightP + denom * tFront ) - gapPrev;
 
-				float surf = rayH - gap;
-				if ( continuity > 0.0 && gap <= 0.0 && gapPrev > 0.0 && abs( surf - surfPrev ) < continuity )
+				[loop]
+				for ( int k = 1; k <= steps; k++ )
 				{
-					hit = true;
-					crossed = true;
-					break;
-				}
+					float t = lerp( tFront, tBack, (float)k / steps );
+					float rayH = heightP + denom * t;
+					float gap = FlatpackDepthGap( frame, uvP + uvPerT * t, rayH, n, range.x, rad, depthLod );
+					if ( gap <= 0.0 && gap >= -thickness )
+					{
+						hit = true;
+						tNext = t;
+						break;
+					}
 
-				tPrev = t;
-				gapPrev = gap;
-				surfPrev = surf;
+					float surf = rayH - gap;
+					if ( continuity > 0.0 && gap <= 0.0 && gapPrev > 0.0 && abs( surf - surfPrev ) < continuity )
+					{
+						hit = true;
+						crossed = true;
+						tNext = t;
+						break;
+					}
+
+					tPrev = t;
+					gapPrev = gap;
+					surfPrev = surf;
+				}
 			}
 
 			// Binary refinement between the last step in front of the surface and the first one behind it. Still point
@@ -542,12 +767,12 @@ PS
 			if ( hit )
 			{
 				float tIn = tPrev;
-				float tOut = lerp( tFront, tBack, saturate( ( ( tPrev - tFront ) / ( tBack - tFront ) ) + 1.0 / steps ) );
+				float tOut = tNext;
 				[unroll]
 				for ( int b = 0; b < 4; b++ )
 				{
 					float tm = ( tIn + tOut ) * 0.5;
-					float gm = FlatpackDepthGap( frame, uvP + uvPerT * tm, heightP + denom * tm, n, rad, depthLod );
+					float gm = FlatpackDepthGap( frame, uvP + uvPerT * tm, heightP + denom * tm, n, range.x, rad, depthLod );
 					if ( gm <= 0.0 && ( crossed || gm >= -thickness ) )
 						tOut = tm;
 					else
@@ -558,31 +783,65 @@ PS
 			}
 		}
 
-		// A miss usually means a part thinner than one search step (twigs, wires): the ray stepped over it. Fall back to
-		// where the ray crosses the centre plane, which still lands on thin parts near the middle of the object.
+		// A ray that finds no surface sees nothing in this frame. (Miss Fallback, which sampled the centre plane instead to
+		// keep sub-step twigs, was removed in iteration 8: the coarse search finds them, and with it the fallback only
+		// ghosted, 9 to 38% wrong pixels on the chair.)
 		if ( !hit )
-		{
-			if ( g_flFlatpackMissFallback < 0.5 )
-				return;
-			tHit = -heightP / denom;
-		}
+			return s;
 
 		float2 uvHit = uvP + uvPerT * tHit;
 		if ( any( uvHit < 0.0 ) || any( uvHit > 1.0 ) )
-			return;
+			return s;
 
 		float2 atlasUv = ( frame + uvHit ) / n;
-		float4 a = g_tFlatpackAlbedo.SampleLevel( g_sFlatpack, atlasUv, lod );
-		float4 nd = g_tFlatpackNormalDepth.SampleLevel( g_sFlatpack, atlasUv, lod );
-		float4 r = g_tFlatpackRoughnessAo.SampleLevel( g_sFlatpack, atlasUv, lod );
+		float2 gx = grad.xy / rectSize / n;
+		float2 gy = grad.zw / rectSize / n;
+		float4 a = FlatpackAtlasSample( g_tFlatpackAlbedo, atlasUv, lod, gx, gy );
 
-		// Weight colour by coverage too, so a frame that misses here doesn't drag in its padded fringe.
-		float wa = weight * a.a;
-		s.Alpha += wa;
-		s.Albedo += a.rgb * wa;
-		s.Normal += ( nd.rgb * 2.0 - 1.0 ) * wa;
-		s.RoughnessAoSky += r * wa;
-		s.HitOs += ( P + R * tHit ) * wa;
+		s.Alpha = a.a;
+		s.Albedo = a.rgb;
+		s.Normal = FlatpackBakedNormal( atlasUv, lod, gx, gy );
+		s.RoughnessAoSky = FlatpackAtlasSample( g_tFlatpackRoughnessAo, atlasUv, lod, gx, gy );
+		s.T = tHit;
+		return s;
+	}
+
+	// How much each frame's surface counts for shading, given where the three traces landed along the view ray.
+	//
+	// Three frames that saw different surfaces at this pixel (a wing edge in one, the body behind it in another) used to be
+	// averaged, so the pixel showed both at once: doubled wings, spindles and wire panels, and a written depth between the
+	// surfaces. Here a frame whose hit lies further than the falloff behind the nearest hit fades out of the blend. The
+	// barycentric weights stay the base, so view transitions stay continuous; the fade also weakens while the nearest
+	// frame's own share is small, so a frame that is just entering the blend can't take the pixel over in one step.
+	float3 FlatpackAgreement( FlatpackSample hit0, FlatpackSample hit1, FlatpackSample hit2, float3 weights, float rayLength, float lod )
+	{
+		// Wider with each mip level: a small card searches coarser depth in fewer steps, so its frames disagree by more
+		// without seeing different surfaces, and averaging them is what keeps it from aliasing.
+		float falloff = g_flFlatpackAgreement * g_flFlatpackRadius * exp2( lod * g_flFlatpackAgreementRange );
+		if ( falloff <= 0.0 )
+			return 1.0;
+
+		float3 alpha = float3( hit0.Alpha, hit1.Alpha, hit2.Alpha );
+		float3 wa = weights * alpha;
+		float3 t = float3( hit0.T, hit1.T, hit2.T );
+
+		// Frames that saw nothing, or only the padded fringe around a silhouette, don't take part (their t is
+		// meaningless); a huge t keeps them out of the minimum.
+		float3 tSeen;
+		tSeen.x = weights.x > 0.0 && alpha.x > 0.05 ? t.x : 100000000.0;
+		tSeen.y = weights.y > 0.0 && alpha.y > 0.05 ? t.y : 100000000.0;
+		tSeen.z = weights.z > 0.0 && alpha.z > 0.05 ? t.z : 100000000.0;
+		float tMin = min( tSeen.x, min( tSeen.y, tSeen.z ) );
+		if ( tMin >= 10000000.0 )
+			return 1.0;
+
+		// Share of the blend held by the frame (or frames) that saw the nearest surface. At a quarter or more the fade acts
+		// fully; below that it eases off to nothing.
+		float waNear = dot( wa, step( tSeen, tMin ) );
+		float strength = saturate( waNear / max( 0.25 * ( wa.x + wa.y + wa.z ), 1e-5 ) );
+
+		float3 agree = saturate( 1.0 - ( tSeen - tMin ) * rayLength / falloff );
+		return lerp( 1.0, agree, strength );
 	}
 
 	FlatpackPixelOutput MainPs( PixelInput i )
@@ -610,30 +869,57 @@ PS
 		float2 uvCentre = FlatpackFrameUv( P, R, d0, r0, u0, 0.0 );
 		float atlasW, atlasH;
 		g_tFlatpackAlbedo.GetDimensions( atlasW, atlasH );
-		float2 footprint = max( abs( ddx( uvCentre ) ), abs( ddy( uvCentre ) ) ) * float2( atlasW, atlasH ) / n;
+		float4 grad = float4( ddx( uvCentre ), ddy( uvCentre ) );
+		float2 frameTexels = float2( atlasW, atlasH ) / n;
+		float2 footprint = max( abs( grad.xy ), abs( grad.zw ) ) * frameTexels;
 		float texelsPerPixel = log2( max( max( footprint.x, footprint.y ), 1e-6 ) );
+		float lodSphere = max( 0.0, texelsPerPixel );
+
+		// See-through growth is fitted against this sphere-frame density (as in iteration 7), whatever the framing.
+		float texelsSphere = texelsPerPixel;
+
+		// Framed bakes: the footprint in frame 0's own rectangle, along each screen axis. The anisotropic filter covers
+		// the longer one, so coverage and the depth search take their level from the shorter one (up to 16 to 1, the
+		// filter's limit).
+		if ( g_flFlatpackFramed > 0.5 )
+		{
+			float2 rect0 = max( i.vFpRect0.zw - i.vFpRect0.xy, 1e-3 );
+			float lx = length( grad.xy / rect0 * frameTexels );
+			float ly = length( grad.zw / rect0 * frameTexels );
+			texelsPerPixel = log2( max( max( max( lx, ly ) / 16.0, min( lx, ly ) ), 1e-6 ) );
+		}
 		float lod = max( 0.0, texelsPerPixel );
 
-		FlatpackSample s = (FlatpackSample)0;
+		FlatpackSample hit0 = FlatpackSampleFrame( i.vFpFrames01.xy, weights.x, i.vFpRect0, i.vFpRange01.xy, P, R, mode, n, lod, grad, lodSphere, frameTexels.x );
+		FlatpackSample hit1 = FlatpackSampleFrame( i.vFpFrames01.zw, weights.y, i.vFpRect1, i.vFpRange01.zw, P, R, mode, n, lod, grad, lodSphere, frameTexels.x );
+		FlatpackSample hit2 = FlatpackSampleFrame( i.vFpFrame2.xy, weights.z, i.vFpRect2, i.vFpRange2, P, R, mode, n, lod, grad, lodSphere, frameTexels.x );
+
 		// Each frame's own coverage is kept for debug view 3.
-		float3 frameAlpha;
-		FlatpackSampleFrame( i.vFpFrames01.xy, weights.x, P, R, mode, n, lod, s );
-		frameAlpha.x = s.Alpha / max( weights.x, 1e-5 );
-		float alphaBefore = s.Alpha;
-		FlatpackSampleFrame( i.vFpFrames01.zw, weights.y, P, R, mode, n, lod, s );
-		frameAlpha.y = ( s.Alpha - alphaBefore ) / max( weights.y, 1e-5 );
-		alphaBefore = s.Alpha;
-		FlatpackSampleFrame( i.vFpFrame2.xy, weights.z, P, R, mode, n, lod, s );
-		frameAlpha.z = ( s.Alpha - alphaBefore ) / max( weights.z, 1e-5 );
+		float3 frameAlpha = float3( hit0.Alpha, hit1.Alpha, hit2.Alpha );
+
+		// Coverage blends by the view weights alone: whether the pixel is part of the object doesn't depend on which
+		// surface it shows.
+		float coverageSum = dot( weights, frameAlpha );
+
+		// Everything else blends by weight, coverage (so a frame that misses here doesn't drag in its padded fringe) and
+		// agreement (so frames that landed on a surface behind the nearest one don't show through it).
+		float3 shade = weights * frameAlpha * FlatpackAgreement( hit0, hit1, hit2, weights, length( R ), lod );
+		float shadeSum = max( shade.x + shade.y + shade.z, 1e-6 );
+		shade /= shadeSum;
+
+		float3 sampleAlbedo = hit0.Albedo * shade.x + hit1.Albedo * shade.y + hit2.Albedo * shade.z;
+		float3 sampleNormal = hit0.Normal * shade.x + hit1.Normal * shade.y + hit2.Normal * shade.z;
+		float4 sampleRao = hit0.RoughnessAoSky * shade.x + hit1.RoughnessAoSky * shade.y + hit2.RoughnessAoSky * shade.z;
+		float tSurface = hit0.T * shade.x + hit1.T * shade.y + hit2.T * shade.z;
 
 		// Coverage. The forward pass turns it into a soft edge for alpha-to-coverage (one pixel wide, from the screen
 		// derivative); the depth pass needs a hard cut.
 		// Mipmaps average a thin part's alpha with the empty space around it, so spindles, wires and leaves fall below
 		// the clip and vanish (or sparkle) as the card gets smaller. The baker measured how far each mip falls short;
 		// undoing exactly that keeps coverage constant without filling in the gaps of foliage.
-		float alpha = s.Alpha * FlatpackMipAlphaScale( lod );
+		float alpha = coverageSum * FlatpackMipAlphaScale( lod );
 		if ( g_flFlatpackSoftCoverage > 0.0 )
-			alpha = s.Alpha * g_flFlatpackSoftCoverage * exp2( g_flFlatpackSoftGrowth * clamp( texelsPerPixel, -3.0, 3.0 ) );
+			alpha = coverageSum * g_flFlatpackSoftCoverage * exp2( g_flFlatpackSoftGrowth * clamp( texelsSphere, g_flFlatpackFramed > 0.5 ? 0.0 : -3.0, 3.0 ) );
 
 		float coverage = alpha;
 		#if ( S_MODE_DEPTH == 0 )
@@ -649,22 +935,21 @@ PS
 			clip( alpha - g_flFlatpackAlphaClip );
 		#endif
 
-		float inv = 1.0 / max( s.Alpha, 1e-4 );
-		float3 albedo = s.Albedo * inv;
-		float4 rao = s.RoughnessAoSky * inv;
+		float3 albedo = sampleAlbedo;
+		float4 rao = sampleRao;
 
 		// Optional baked sky visibility (see g_flFlatpackSkyOcclusion).
 		float skyOcclusion = lerp( 1.0, rao.z, g_flFlatpackSkyOcclusion );
 		albedo *= lerp( 1.0, skyOcclusion, 0.5 );
 
-		// The surface point is the coverage-weighted average of where each frame's ray hit.
-		float3 surfaceOs = s.HitOs * inv;
+		// The surface point is the blended hit along the view ray, so it lies on the surface the frames agree on.
+		float3 surfaceOs = P + R * tSurface;
 
 		float3x4 m = float3x4( i.vFpRow0, i.vFpRow1, i.vFpRow2 );
 		float3 surfaceWs = mul( m, float4( surfaceOs, 1.0 ) );
 
 		// Normals were baked in object space; the instance rotation takes them to world space.
-		float3 normalWs = normalize( mul( (float3x3)m, s.Normal ) );
+		float3 normalWs = normalize( mul( (float3x3)m, sampleNormal ) );
 		float3 tangentU = normalize( cross( abs( normalWs.z ) < 0.999 ? float3( 0, 0, 1 ) : float3( 1, 0, 0 ), normalWs ) );
 		float3 tangentV = cross( normalWs, tangentU );
 
