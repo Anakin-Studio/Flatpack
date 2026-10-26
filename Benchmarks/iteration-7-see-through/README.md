@@ -64,6 +64,27 @@ panel doubles when you look at it from the side (bottom rows of the sheet above)
 
 So Auto quality now sends see-through bakes straight to Ultra. Explicit quality choices are left alone.
 
+## 4. Stray specks off foliage
+
+![Tree crown: real model, card before, card now](media/specks_before_after.png)
+
+The README hero showed small specks floating off the tree's crown. They came from the card's soft edge. The colour pass
+turns coverage into a ramp one pixel wide, `(alpha - Alpha Clip) / fwidth(alpha) + 0.5`, and kept any pixel above
+1/255 of it, leaving the rest of the edge to alpha-to-coverage. s&box renders without MSAA, so nothing softens it: a
+pixel 40% covered next to an empty one sits on a steep ramp, passes, and is drawn solid. Debug view 3 (new: each frame's
+own coverage) showed most speck pixels had no frame above half coverage (427 of 878).
+
+| Cut | Detached pieces on the hero crown | Card against model coverage, test set at 24 radii |
+|---|---|---|
+| Soft edge, keep above 1/255 (before) | 246 | 1.02 to 1.17 (too dense) |
+| Hard cut at Alpha Clip | 61 | 0.67 to 0.96 (thin; weed tree 0.67) |
+| **Soft edge, but only pixels at least 0.75 x Alpha Clip** (Edge Floor) | 134, almost none visible by eye | **0.87 to 1.02** |
+
+The real tree has 362 detached pieces of its own at this size (needle tips), so the count can't reach 0. Edge Floor 0.75
+removed the visible specks and brought coverage closer to the models at every distance tested: the old edge made far
+cards a little too dense (chair 1.17, fern 1.17 at 24 radii). The bake check gives the same distances as before for all
+six test models (chair 6, fern 6, knight 8, dragon 8, tree 8, weed tree 12). The hero image is re-rendered with it.
+
 ## The baker spots see-through models
 
 Share of covered atlas texels that are only partly covered, measured on the first (Low) bake Auto makes:
@@ -92,18 +113,18 @@ Play mode, 1080p. Share of the object's box covered (clearly darker than the bac
 |---|---|---|---|---|---|---|
 | Real model | 12.6% | 14.1% | 16.3% | 20.1% | 21.5% | 25.1% |
 | Card before | 9.9% | 10.2% | 10.8% | 13.4% | 17.1% | 22.9% |
-| **Card now** (Ultra, strength 1.75, growth 0.5) | 14.1% | 17.2% | 18.5% | 20.3% | 24.4% | 26.8% |
+| **Card now** (Ultra, strength 2.0, growth 0.5) | 15.8% | 17.7% | 17.8% | 18.5% | 22.3% | 24.7% |
 
 | Fence, at an angle | 6 radii | 8 | 12 | 16 | 24 | 32 |
 |---|---|---|---|---|---|---|
 | Real model | 9.6% | 11.4% | 13.0% | 15.2% | 17.2% | 16.9% |
 | Card before | 7.2% | 7.6% | 8.3% | 9.8% | 12.9% | 15.9% |
-| **Card now** | 10.6% | 13.6% | 15.1% | 15.7% | 18.8% | 20.2% |
+| **Card now** | 12.1% | 14.0% | 14.4% | 14.6% | 17.5% | 18.6% |
 
-- The fence card now covers within 3.3 points of the real fence at every distance (before: up to 6.7 points short), with
+- The fence card now covers within 3.6 points of the real fence at every distance (before: up to 6.7 points short), with
   wires the right shade, and the bake check says it holds up from 6 radii instead of never.
-- The weed tree (Auto now bakes it at Ultra too) holds up from 8 radii instead of 12, and moves a little closer to the
-  model past 24 radii.
+- The weed tree (Auto now bakes it at Ultra too) covers within 0.6 points of the real one at every distance (before:
+  up to 1.2 over). The bake check still says 12 radii.
 
 "Card before" is the same fence drawn the way Flatpack drew it before this iteration (Medium, plain alpha cut, no metal).
 
@@ -139,4 +160,5 @@ see-through model with real weight (a detailed chain-link run, scaffolding) is w
 
 - `data/see_through_bench.jsonl`: coverage, darkening and wire brightness per model, view, distance and version.
 - `data/fence_field_gpu.jsonl`: the 2,500-fence GPU runs.
-- `media/fence_before_after.png`, `media/see_through_coverage.png`.
+- `data/edge_floor_coverage.jsonl`: card against model coverage on the test set for each edge cut.
+- `media/fence_before_after.png`, `media/see_through_coverage.png`, `media/specks_before_after.png`.

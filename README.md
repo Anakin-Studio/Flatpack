@@ -10,12 +10,10 @@ its brightness within 2% of the real tree.</sub>
 
 ## Real model up close, card at a distance
 
-![The real tree and its card from 6 to 48 bounding radii, at true size, with the hybrid's GPU time](docs/media/flatpack_distance.png)
+![The knight from 1.5 to 24 bounding radii](Benchmarks/iteration-3-ten-models/media/distance_knight.png)
 
-Each tile is the size the tree really is on a 1080p screen. Up close you get your real model; from the distance where
-the card looks the same (measured after every bake, 6 bounding radii for this tree), the card takes over. A forest of
-2,500 of these trees drew in 17 to 21 ms with the hybrid against 32 to 62 ms as real models only (four runs each on an
-RTX 3090; details in [iteration 6](Benchmarks/iteration-6-real-scenes/README.md#real-model-up-close-card-far)).
+The real model on top, its card below, as the camera moves from 1.5 to 24 bounding radii. The numbers under each
+pair are the knight's height on a 1080p screen.
 
 Far from the camera, a 572,544-triangle tree and a 2-triangle card look the same, and the card costs almost nothing to draw.
 Flatpack renders the model from 144 directions into texture atlases, then draws one quad that picks the three views
@@ -64,7 +62,12 @@ that difference changes about half as much from one step to the next, which is w
 
 ### How close can you get?
 
-![The knight from 1.5 to 24 bounding radii](Benchmarks/iteration-3-ten-models/media/distance_knight.png)
+![The real tree and its card from 6 to 48 bounding radii, at true size, with the hybrid's GPU time](docs/media/flatpack_distance.png)
+
+Each tile is the size the tree really is on a 1080p screen. Up close you get your real model; from the distance where
+the card looks the same (measured after every bake, 6 bounding radii for this tree), the card takes over. A forest of
+2,500 of these trees drew in 17 to 21 ms with the hybrid against 32 to 62 ms as real models only (four runs each on an
+RTX 3090; details in [iteration 6](Benchmarks/iteration-6-real-scenes/README.md#real-model-up-close-card-far)).
 
 | Kind of model | Card holds up from | On a 1080p screen |
 |---|---|---|
@@ -249,7 +252,8 @@ quad's position and size and builds the card from the bake data and the instance
 | Output Folder | next to the model | Relative to `Assets`. |
 
 The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, set by the
-quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness** (added to the baked metalness),
+quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Edge Floor** (how much of Alpha Clip an edge pixel
+needs before it's drawn; stops stray specks), **Metalness** (added to the baked metalness),
 **Shadow Bias**, **Miss Fallback** (keeps some sub-step twigs at the cost of ghosting, off by default), **Sky Occlusion**
 (darkens enclosed parts using the self-shadow bake, for dense foliage) and, for see-through bakes, **Soft Coverage** and
 **Soft Growth** (the baker fits both to the model). The baker also writes per-mip alpha corrections it measured from the atlas, so

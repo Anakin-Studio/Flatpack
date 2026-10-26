@@ -5,6 +5,23 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: Stray specks off foliage fixed (Edge Floor)
+
+- Change:
+  - Shader: Edge Floor (`g_flFlatpackEdgeFloor`, default 0.75). The soft edge now keeps a pixel only when it's covered at
+    least 0.75 x Alpha Clip. Before, any pixel above 1/255 of the edge ramp was drawn, and without MSAA a partly covered
+    pixel beside an empty one was drawn solid: specks floating off foliage, most visible in the README hero. Applies to
+    every bake, old and new, with no re-bake.
+  - Debug view 3: each frame's own coverage at the pixel (rgb).
+  - README hero re-rendered. Fence and weed tree re-baked (fit re-run); iteration 7 numbers updated.
+  - README: the knight's close-up sheet now sits under the hero, and the tree distance sheet with the hybrid's GPU
+    times moves to "How close can you get?", each with its own caption.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (+ `.shader_c`), `docs/media/flatpack_hero.png`,
+  `Benchmarks/iteration-7-see-through/**`, `Benchmarks/README.md`, `README.md`
+- Testing: editor. Hero crown: detached pieces 246 to 134, almost none visible by eye. Card against model coverage on the six
+  test models at 6, 12 and 24 radii, two sides: 0.87 to 1.03 (was 0.98 to 1.17); a hard cut at Alpha Clip was tried and
+  dropped (thinned the weed tree to 0.67). Bake check distances unchanged on all six. Fence bench re-run.
+
 ## 2026-10-25: See-through detail and baked metalness (iteration 7)
 
 - Change:

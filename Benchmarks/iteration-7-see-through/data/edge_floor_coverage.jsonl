@@ -1,0 +1,30 @@
+{"cut": "soft edge, cut 1/255 (before)", "model": "wooden_chair_a", "ratio_6r": 1.001, "ratio_12r": 1.061, "ratio_24r": 1.165}
+{"cut": "soft edge, cut 1/255 (before)", "model": "knight_statue_01", "ratio_6r": 0.99, "ratio_12r": 1.014, "ratio_24r": 1.046}
+{"cut": "soft edge, cut 1/255 (before)", "model": "dragon_statue", "ratio_6r": 0.983, "ratio_12r": 1.024, "ratio_24r": 1.069}
+{"cut": "soft edge, cut 1/255 (before)", "model": "tree_small_03", "ratio_6r": 1.01, "ratio_12r": 1.018, "ratio_24r": 1.046}
+{"cut": "soft edge, cut 1/255 (before)", "model": "tropical_giant_fern_0", "ratio_6r": 1.005, "ratio_12r": 1.08, "ratio_24r": 1.17}
+{"cut": "soft edge, cut 1/255 (before)", "model": "weed_tree_small", "ratio_6r": 1.061, "ratio_12r": 1.073, "ratio_24r": 1.018}
+{"cut": "hard cut at Alpha Clip", "model": "wooden_chair_a", "ratio_6r": 0.913, "ratio_12r": 0.908, "ratio_24r": 0.885}
+{"cut": "hard cut at Alpha Clip", "model": "knight_statue_01", "ratio_6r": 0.958, "ratio_12r": 0.961, "ratio_24r": 0.955}
+{"cut": "hard cut at Alpha Clip", "model": "dragon_statue", "ratio_6r": 0.935, "ratio_12r": 0.943, "ratio_24r": 0.935}
+{"cut": "hard cut at Alpha Clip", "model": "tree_small_03", "ratio_6r": 0.957, "ratio_12r": 0.934, "ratio_24r": 0.932}
+{"cut": "hard cut at Alpha Clip", "model": "tropical_giant_fern_0", "ratio_6r": 0.898, "ratio_12r": 0.893, "ratio_24r": 0.882}
+{"cut": "hard cut at Alpha Clip", "model": "weed_tree_small", "ratio_6r": 0.872, "ratio_12r": 0.795, "ratio_24r": 0.674}
+{"cut": "edge floor 0.25", "model": "wooden_chair_a", "ratio_6r": 1.001, "ratio_12r": 1.059, "ratio_24r": 1.151}
+{"cut": "edge floor 0.25", "model": "knight_statue_01", "ratio_6r": 0.99, "ratio_12r": 1.012, "ratio_24r": 1.04}
+{"cut": "edge floor 0.25", "model": "dragon_statue", "ratio_6r": 0.983, "ratio_12r": 1.022, "ratio_24r": 1.058}
+{"cut": "edge floor 0.25", "model": "tree_small_03", "ratio_6r": 1.01, "ratio_12r": 1.016, "ratio_24r": 1.043}
+{"cut": "edge floor 0.25", "model": "tropical_giant_fern_0", "ratio_6r": 1.004, "ratio_12r": 1.076, "ratio_24r": 1.151}
+{"cut": "edge floor 0.25", "model": "weed_tree_small", "ratio_6r": 1.062, "ratio_12r": 1.072, "ratio_24r": 1.012}
+{"cut": "edge floor 0.5", "model": "wooden_chair_a", "ratio_6r": 0.999, "ratio_12r": 1.044, "ratio_24r": 1.094}
+{"cut": "edge floor 0.5", "model": "knight_statue_01", "ratio_6r": 0.989, "ratio_12r": 1.006, "ratio_24r": 1.023}
+{"cut": "edge floor 0.5", "model": "dragon_statue", "ratio_6r": 0.981, "ratio_12r": 1.014, "ratio_24r": 1.031}
+{"cut": "edge floor 0.5", "model": "tree_small_03", "ratio_6r": 1.009, "ratio_12r": 1.01, "ratio_24r": 1.027}
+{"cut": "edge floor 0.5", "model": "tropical_giant_fern_0", "ratio_6r": 1.001, "ratio_12r": 1.059, "ratio_24r": 1.105}
+{"cut": "edge floor 0.5", "model": "weed_tree_small", "ratio_6r": 1.059, "ratio_12r": 1.057, "ratio_24r": 0.986}
+{"cut": "edge floor 0.75", "model": "wooden_chair_a", "ratio_6r": 0.981, "ratio_12r": 0.996, "ratio_24r": 0.995}
+{"cut": "edge floor 0.75", "model": "knight_statue_01", "ratio_6r": 0.981, "ratio_12r": 0.987, "ratio_24r": 0.988}
+{"cut": "edge floor 0.75", "model": "dragon_statue", "ratio_6r": 0.967, "ratio_12r": 0.984, "ratio_24r": 0.983}
+{"cut": "edge floor 0.75", "model": "tree_small_03", "ratio_6r": 0.996, "ratio_12r": 0.981, "ratio_24r": 0.985}
+{"cut": "edge floor 0.75", "model": "tropical_giant_fern_0", "ratio_6r": 0.975, "ratio_12r": 0.992, "ratio_24r": 1.019}
+{"cut": "edge floor 0.75", "model": "weed_tree_small", "ratio_6r": 1.029, "ratio_12r": 0.976, "ratio_24r": 0.868}

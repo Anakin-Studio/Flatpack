@@ -384,8 +384,15 @@ PS
 	// different views), so without this the card shadows itself in blotches.
 	float g_flFlatpackShadowBias < Default( 0.08 ); Range( 0.0, 0.5 ); UiGroup( "Flatpack,10/85" ); >;
 
-	// Diagnostic output, shown through the camera's Albedo debug view: 1 = first frame's image UV (rg), 2 = weights.
-	float g_flFlatpackDebugView < Default( 0.0 ); Range( 0.0, 2.0 ); UiGroup( "Flatpack,90/10" ); >;
+	// Diagnostic output, shown through the camera's Albedo debug view: 1 = first frame's image UV (rg), 2 = weights,
+	// 3 = each frame's own coverage at this pixel (rgb), to see which frame puts something where.
+	// The soft edge only keeps pixels covered at least this much of Alpha Clip. Without a floor, a pixel with a bit of
+	// coverage and an empty neighbour (a steep coverage step) passed the edge ramp and was drawn solid: stray specks
+	// floating off foliage, since s&box renders without MSAA to soften them. 0.75 removed them on the test set and kept
+	// coverage within 3% of the models from 6 to 24 radii (iteration 7); 1 is a hard cut at Alpha Clip, a little thin.
+	float g_flFlatpackEdgeFloor < Default( 0.75 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/61" ); >;
+
+	float g_flFlatpackDebugView < Default( 0.0 ); Range( 0.0, 3.0 ); UiGroup( "Flatpack,90/10" ); >;
 
 	// Dither cross-fade, set per object by FlatpackRenderer while it swaps between card and model.
 	// 1 = fully shown. Uses a render attribute so a material default is the fallback.
@@ -608,9 +615,16 @@ PS
 		float lod = max( 0.0, texelsPerPixel );
 
 		FlatpackSample s = (FlatpackSample)0;
+		// Each frame's own coverage is kept for debug view 3.
+		float3 frameAlpha;
 		FlatpackSampleFrame( i.vFpFrames01.xy, weights.x, P, R, mode, n, lod, s );
+		frameAlpha.x = s.Alpha / max( weights.x, 1e-5 );
+		float alphaBefore = s.Alpha;
 		FlatpackSampleFrame( i.vFpFrames01.zw, weights.y, P, R, mode, n, lod, s );
+		frameAlpha.y = ( s.Alpha - alphaBefore ) / max( weights.y, 1e-5 );
+		alphaBefore = s.Alpha;
 		FlatpackSampleFrame( i.vFpFrame2.xy, weights.z, P, R, mode, n, lod, s );
+		frameAlpha.z = ( s.Alpha - alphaBefore ) / max( weights.z, 1e-5 );
 
 		// Coverage. The forward pass turns it into a soft edge for alpha-to-coverage (one pixel wide, from the screen
 		// derivative); the depth pass needs a hard cut.
@@ -628,6 +642,7 @@ PS
 			// Debug views (the baker's quality check renders through Albedo) write full alpha, so alpha-to-coverage
 			// can't act there; dither instead, which averages to the same coverage.
 			float cut = ToolsVisMode != 0 ? FlatpackBayer4( i.vPositionSs.xy ) : 1.0 / 255.0;
+			clip( alpha - g_flFlatpackAlphaClip * g_flFlatpackEdgeFloor );
 
 			clip( coverage - cut );
 		#else
@@ -657,7 +672,7 @@ PS
 		mat.Albedo = albedo;
 
 		if ( g_flFlatpackDebugView > 0.5 )
-			mat.Albedo = SrgbGammaToLinear( g_flFlatpackDebugView < 1.5 ? float3( saturate( uvCentre ), 0 ) : weights );
+			mat.Albedo = SrgbGammaToLinear( g_flFlatpackDebugView < 1.5 ? float3( saturate( uvCentre ), 0 ) : ( g_flFlatpackDebugView < 2.5 ? weights : saturate( frameAlpha ) ) );
 
 		mat.Normal = normalWs;
 		mat.GeometricNormal = normalWs;
