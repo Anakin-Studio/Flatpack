@@ -5,6 +5,17 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-26: Five more package page screenshots
+
+- Change: the sbox.game kit gains screenshots 4 to 8, rendered with iteration 8 bakes of the two Small Box trees: a
+  2,500-tree forest from a low camera, the same frame with the cards in debug colours (2,496 of 2,500 are cards), the
+  Flatpack Renderer panel in the editor, Optimize Scene over a 900-tree forest (1,800 triangles far away instead of
+  497,724,480), and the Ultra tree bake's textures beside the finished card. The kit README lists them.
+- Files: `marketing/screenshot_{4_forest_view,5_cards_revealed,6_component,7_optimize_scene,8_inside_a_bake}.png`,
+  `marketing/README.md`
+- Testing: editor (forest renders in play mode, editor shots captured from the running editor, Tree_small_03 baked
+  fresh at Medium with self shadow).
+
 ## 2026-10-26: Field split screens, tree radius and triangle count fixes
 
 - Change:

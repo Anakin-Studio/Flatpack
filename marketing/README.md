@@ -1,7 +1,7 @@
 # Flatpack: sbox.game package page kit
 
-Everything the `anakin.flatpack` package page asks for. Images are made from the latest bakes (iteration 6), always
-with the real model beside the card, using licensed models only.
+Everything the `anakin.flatpack` package page asks for. Images are made from the latest bakes, using licensed models
+only: screenshots 1 to 3 and the trailer from iteration 6, screenshots 4 to 8 from iteration 8.
 
 ## Fields
 
@@ -24,6 +24,11 @@ with the real model beside the card, using licensed models only.
 | `screenshot_1_tree.png` | 1920 x 1080 | Screenshot | Real tree and card side by side from 6 bounding radii, Ultra bake with baked self-shadowing (brightness within 2% of the real tree) |
 | `screenshot_2_forest.png` | 1920 x 1080 | Screenshot | 2,500 trees, split screen: native models left, Flatpack right, with GPU times |
 | `screenshot_3_swap_chart.png` | 1920 x 1080 | Screenshot | GPU time against swap distance for a heavy, a medium and a light model, with native |
+| `screenshot_4_forest_view.png` | 1920 x 1080 | Screenshot | 2,500 trees (both Small Box trees, mixed) from a low camera, Flatpack swapping on its own, straight from the engine |
+| `screenshot_5_cards_revealed.png` | 1920 x 1080 | Screenshot | The same frame with the cards in the shader's debug colours: 2,496 of the 2,500 trees are cards |
+| `screenshot_6_component.png` | 1920 x 1080 | Screenshot | The editor viewport with one tree selected and its Flatpack Renderer panel (the real component editor, in a window of its own) |
+| `screenshot_7_optimize_scene.png` | 1920 x 1080 | Screenshot | Optimize Scene over a 900-tree forest: 1,800 triangles far away instead of 497,724,480 |
+| `screenshot_8_inside_a_bake.png` | 1920 x 1080 | Screenshot | The Ultra tree bake's textures (colour, normals, depth, roughness/AO/shadow) beside the finished card |
 | `flatpack_trailer_1080p.mp4` | 1920 x 1080, 19 s | Video | Title, the tree turning (real against card), the fly-in over the forest split screen, end card |
 
 Where the numbers come from: the GPU times (28.8 ms native, 10.0 ms Flatpack) are the swap-distance test of the same
