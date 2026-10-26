@@ -5,6 +5,25 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-26: Field split screens, tree radius and triangle count fixes
+
+- Change:
+  - Split-screen field renders (2,500 copies, native left, Flatpack right, iteration 8 bakes, GPU time and frame rate
+    from three interleaved rounds on an RTX 3090): trees 15.4 ms (65 FPS) against 8.4 ms (119 FPS) with a self-shadowed
+    Medium bake; burger cars 106.5 ms (9 FPS) against 9.2 ms (108 FPS); wooden chairs 3.3 ms (300 FPS) against 10.7 ms
+    (93 FPS) and knight statues 6.9 ms (144 FPS) against 10.5 ms (96 FPS), where the light models are cheaper as
+    themselves. The chair and knight images and the data are in the iteration 8 benchmarks.
+  - Fixed: the iteration 3 and 4 tree distance sheets, the iteration 8 tree heatmap and the README's tree example used
+    the fern's bounding radius (31.85 units) for Tree_small_03 (146.98): "6 radii (22 m)", not 4.9 m.
+  - Fixed: the ten-model grid's triangle counts came from the old count that misses extra materials: Tree_small_03
+    534,024 (was 293,609), burger car 96,792 (8,320), fence 1,840 (909), weed tree 1,951 (1,909).
+- Files: `README.md`, `docs/media/comparison_grid.png`, `Benchmarks/iteration-3-ten-models/media/distance_tree.png`,
+  `Benchmarks/iteration-4-quality-levels/media/presets_distance_tree.png`,
+  `Benchmarks/iteration-8-card-look/media/{heatmap_tree_small_03,field_chair,field_knight}.png`,
+  `Benchmarks/iteration-8-card-look/data/split_screen_fields.jsonl`
+- Testing: editor (fields in play mode; GPU counter sampled before any screenshot, since a 1080p render between samples
+  froze it).
+
 ## 2026-10-26: README images re-rendered with iteration 8 bakes
 
 - Change: every README image that shows a card is re-rendered from fresh bakes with the current baker: the hero tree

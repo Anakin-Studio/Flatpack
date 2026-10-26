@@ -74,7 +74,7 @@ RTX 3090; details in [iteration 6](Benchmarks/iteration-6-real-scenes/README.md#
 |---|---|---|---|
 | Solid shapes: rocks, cacti, statues | 1.5 to 4 bounding radii | 220 to 760 px tall | knight statue, 0.42 m radius: 0.6 to 1.7 m |
 | Vehicles and props | about 3 radii | about 300 px tall | wooden chair, 0.69 m radius: 2.1 m |
-| Trees and ferns | 6 to 8 radii | 130 to 160 px tall | Tree_small_03, 0.81 m radius: 4.9 to 6.5 m |
+| Trees and ferns | 6 to 8 radii | 130 to 160 px tall | Tree_small_03, 3.73 m radius: 22 to 30 m |
 | Thin spindles, twigs | about 16 radii | about 60 px tall | weed tree, 1.48 m radius: 24 m |
 | Fine wire mesh (fences) | about 6 radii at Ultra (see-through bakes, iteration 7) | about 160 px tall | fence panel, 1.99 m radius: 12 m |
 
