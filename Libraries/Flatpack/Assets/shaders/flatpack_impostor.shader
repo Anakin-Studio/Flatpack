@@ -336,6 +336,11 @@ PS
 	}
 	float g_flFlatpackMetalness < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/80" ); >;
 
+	// 1 when the bake stored metalness in the roughness/AO map's alpha (as 1 + metal x 254, so it's never 0: the PNG
+	// would drop a texel's colour at alpha 0). Bakes from before metal baking have 255 there and leave this at 0. The
+	// card's metalness is Metalness plus the baked value.
+	float g_flFlatpackBakedMetal < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/82" ); >;
+
 	// Depth search steps per frame. 0 projects onto the bounds' centre plane (cheapest, ghosts badly); 8 to 16 lines the
 	// three frames up on the real surface so they stop doubling.
 	float g_flFlatpackSearchSteps < Default( 16.0 ); Range( 0.0, 32.0 ); UiGroup( "Flatpack,10/70" ); >;
@@ -349,6 +354,17 @@ PS
 	// plinth) change height steeply in a view and otherwise slip past the shell test as holes. 0 turns it off. Measured in
 	// iteration 5: 0.25 helps solid statues a little and costs twigs a little, so it's off by default.
 	float g_flFlatpackContinuity < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Flatpack,10/73" ); >;
+
+	// See-through detail (wire mesh, chain-link, nets). Above 0: multiply the baked coverage by this before the alpha
+	// cut, in place of the thin-part boost. A wire thinner than a texel bakes to partial alpha and the plain cut drops
+	// most of it; lowering the cut keeps each wire a solid line, the way the real alpha-tested mesh draws. The baker turns
+	// it on for bakes that are mostly partial coverage and fits it to the model; 0 keeps solid models' cut.
+	float g_flFlatpackSoftCoverage < Default( 0.0 ); Range( 0.0, 8.0 ); UiGroup( "Flatpack,10/79" ); >;
+
+	// How fast a see-through card gets denser as it shrinks on screen: coverage scales by 2^(growth) each time the card's
+	// texels per pixel double. A real alpha-tested mesh thickens with distance (its own mips keep the wires above the cut,
+	// long before the card's coarser atlas reaches its first mip); the baker fits this against the model.
+	float g_flFlatpackSoftGrowth < Default( 0.0 ); Range( 0.0, 2.0 ); UiGroup( "Flatpack,10/81" ); >;
 
 	// How much the baked sky visibility (bake option "Bake Self Shadow") darkens the card: fully for ambient light, half
 	// as much for direct light. 0 matches the real model, which gets no such occlusion in-engine; raise it for dense
@@ -390,7 +406,7 @@ PS
 		float Alpha;
 		float3 Albedo;
 		float3 Normal;
-		float3 RoughnessAoSky;	// roughness, material AO, baked sky visibility
+		float4 RoughnessAoSky;	// roughness, material AO, baked sky visibility, baked metalness (encoded, see g_flFlatpackBakedMetal)
 		float3 HitOs;
 	};
 
@@ -558,7 +574,7 @@ PS
 		s.Alpha += wa;
 		s.Albedo += a.rgb * wa;
 		s.Normal += ( nd.rgb * 2.0 - 1.0 ) * wa;
-		s.RoughnessAoSky += r.rgb * wa;
+		s.RoughnessAoSky += r * wa;
 		s.HitOs += ( P + R * tHit ) * wa;
 	}
 
@@ -588,7 +604,8 @@ PS
 		float atlasW, atlasH;
 		g_tFlatpackAlbedo.GetDimensions( atlasW, atlasH );
 		float2 footprint = max( abs( ddx( uvCentre ) ), abs( ddy( uvCentre ) ) ) * float2( atlasW, atlasH ) / n;
-		float lod = max( 0.0, log2( max( max( footprint.x, footprint.y ), 1e-6 ) ) );
+		float texelsPerPixel = log2( max( max( footprint.x, footprint.y ), 1e-6 ) );
+		float lod = max( 0.0, texelsPerPixel );
 
 		FlatpackSample s = (FlatpackSample)0;
 		FlatpackSampleFrame( i.vFpFrames01.xy, weights.x, P, R, mode, n, lod, s );
@@ -601,6 +618,8 @@ PS
 		// the clip and vanish (or sparkle) as the card gets smaller. The baker measured how far each mip falls short;
 		// undoing exactly that keeps coverage constant without filling in the gaps of foliage.
 		float alpha = s.Alpha * FlatpackMipAlphaScale( lod );
+		if ( g_flFlatpackSoftCoverage > 0.0 )
+			alpha = s.Alpha * g_flFlatpackSoftCoverage * exp2( g_flFlatpackSoftGrowth * clamp( texelsPerPixel, -3.0, 3.0 ) );
 
 		float coverage = alpha;
 		#if ( S_MODE_DEPTH == 0 )
@@ -608,14 +627,16 @@ PS
 
 			// Debug views (the baker's quality check renders through Albedo) write full alpha, so alpha-to-coverage
 			// can't act there; dither instead, which averages to the same coverage.
-			clip( coverage - ( ToolsVisMode != 0 ? FlatpackBayer4( i.vPositionSs.xy ) : 1.0 / 255.0 ) );
+			float cut = ToolsVisMode != 0 ? FlatpackBayer4( i.vPositionSs.xy ) : 1.0 / 255.0;
+
+			clip( coverage - cut );
 		#else
 			clip( alpha - g_flFlatpackAlphaClip );
 		#endif
 
 		float inv = 1.0 / max( s.Alpha, 1e-4 );
 		float3 albedo = s.Albedo * inv;
-		float3 rao = s.RoughnessAoSky * inv;
+		float4 rao = s.RoughnessAoSky * inv;
 
 		// Optional baked sky visibility (see g_flFlatpackSkyOcclusion).
 		float skyOcclusion = lerp( 1.0, rao.z, g_flFlatpackSkyOcclusion );
@@ -644,7 +665,7 @@ PS
 		mat.WorldTangentV = tangentV;
 		mat.Roughness = rao.x;
 		mat.AmbientOcclusion = rao.y * skyOcclusion;
-		mat.Metalness = g_flFlatpackMetalness;
+		mat.Metalness = saturate( g_flFlatpackMetalness + g_flFlatpackBakedMetal * saturate( ( rao.w * 255.0 - 1.0 ) / 254.0 ) );
 		mat.Opacity = coverage;
 		mat.WorldPosition = surfaceWs;
 		mat.WorldPositionWithOffset = surfaceWs - g_vHighPrecisionLightingOffsetWs.xyz;

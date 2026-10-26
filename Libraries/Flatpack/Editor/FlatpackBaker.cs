@@ -40,6 +40,15 @@ public static class FlatpackBaker
 
 	const string DepthShader = "shaders/flatpack_bake_depth.shader";
 
+	/// <summary>Opacity at which a supersample counts as covered: the usual alpha-test cut of s&amp;box materials.</summary>
+	const byte AlphaTestCut = 128;
+
+	/// <summary>
+	/// Bakes whose covered texels are more than this share partly covered are see-through detail. Measured on the test
+	/// set: fence 0.75, weed tree 0.50, everything solid or leafy 0.06 to 0.24.
+	/// </summary>
+	public const float SeeThroughShare = 0.4f;
+
 	/// <summary>
 	/// What a bake wrote.
 	/// </summary>
@@ -95,6 +104,14 @@ public static class FlatpackBaker
 				( f, text ) => progress?.Invoke( (step + f * 0.8f) / levels.Length, $"{level}: {text}" ), cancel );
 			last = await MeasureAsync( baked, ( f, text ) => progress?.Invoke( (step + 0.8f + f * 0.2f) / levels.Length, $"{level}: {text}" ), cancel );
 
+			// See-through detail goes straight to Ultra. At Medium a wire grid has about one texel per wire, so its frames
+			// line up badly and the panel doubles when seen at an angle, even where the bake check passes it (iteration 7).
+			if ( last.Impostor.SeeThrough > SeeThroughShare && level != FlatpackQuality.Ultra )
+			{
+				i = levels.Length - 2;
+				continue;
+			}
+
 			// Holds up from the target (judged out to 16 radii; past that every level matches as well as it ever will).
 			if ( last.Measured.HoldsUpFrom <= MathF.Min( settings.AutoTargetRadii, 16.0f ) )
 				return Finish( last, timer );
@@ -129,6 +146,14 @@ public static class FlatpackBaker
 	/// </summary>
 	static async Task<Result> MeasureAsync( Result baked, Action<float, string> progress, CancellationToken cancel )
 	{
+		if ( baked.Impostor.SeeThrough > SeeThroughShare )
+		{
+			progress?.Invoke( 0.0f, "Fitting see-through coverage to the model" );
+			var (soft, growth) = await FlatpackQualityCheck.FitSoftCoverageAsync( baked.Impostor, cancel );
+			WriteMaterialValue( baked.MaterialPath, "g_flFlatpackSoftCoverage", soft );
+			WriteMaterialValue( baked.MaterialPath, "g_flFlatpackSoftGrowth", growth );
+		}
+
 		progress?.Invoke( 0.0f, "Measuring against the model" );
 		var report = await FlatpackQualityCheck.MeasureAsync( baked.Impostor, cancel: cancel );
 
@@ -142,6 +167,42 @@ public static class FlatpackBaker
 			Impostor = impostor, ImpostorPath = baked.ImpostorPath, MaterialPath = baked.MaterialPath, Files = baked.Files,
 			Duration = baked.Duration, Level = baked.Level, Measured = report,
 		};
+	}
+
+	/// <summary>
+	/// Share of covered texels (alpha above 2 of 255) that are only partly covered (below 250).
+	/// </summary>
+	static float PartialCoverageShare( Color32[] albedo )
+	{
+		long covered = 0, partial = 0;
+		foreach ( var c in albedo )
+		{
+			if ( c.a <= 2 ) continue;
+			covered++;
+			if ( c.a < 250 ) partial++;
+		}
+		return covered > 0 ? partial / (float)covered : 0.0f;
+	}
+
+	/// <summary>
+	/// Set one value in a generated <c>.vmat</c> (adding the line if it's missing) and recompile it.
+	/// </summary>
+	static void WriteMaterialValue( string materialPath, string key, float value )
+	{
+		var asset = AssetSystem.FindByPath( materialPath );
+		if ( asset is null || !File.Exists( asset.AbsolutePath ) )
+			return;
+
+		var line = $"\t{key} \"{value.ToString( "0.000000", CultureInfo.InvariantCulture )}\"";
+		var lines = File.ReadAllLines( asset.AbsolutePath ).ToList();
+		var index = lines.FindIndex( l => l.TrimStart().StartsWith( key + " " ) );
+		if ( index >= 0 )
+			lines[index] = line;
+		else
+			lines.Insert( Math.Max( 0, lines.FindLastIndex( l => l.Trim() == "}" ) ), line );
+
+		File.WriteAllLines( asset.AbsolutePath, lines );
+		asset.Compile( true );
 	}
 
 	/// <summary>
@@ -184,12 +245,13 @@ public static class FlatpackBaker
 		var rao = settings.BakeRoughnessAo ? new Color32[atlas * atlas] : null;
 
 		progress?.Invoke( 0.0f, $"Baking {name}" );
-		await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, Math.Clamp( settings.Supersample, 1, 4 ), progress, cancel );
+		var bakedMetal = await CaptureFramesAsync( model, layout, n, cell, atlas, center, radius, albedo, normalDepth, rao, settings.BakeSelfShadow, Math.Clamp( settings.Supersample, 1, 4 ), progress, cancel );
 
 		cancel.ThrowIfCancellationRequested();
 		progress?.Invoke( 0.85f, "Padding edges" );
 		await Task.Delay( 1 );
 
+		var seeThrough = PartialCoverageShare( albedo );
 		DilateIntoFrames( albedo, normalDepth, rao, atlas, cell, settings.EdgePadding );
 		var mipAlphaScales = MipAlphaScales( albedo, atlas );
 
@@ -208,7 +270,7 @@ public static class FlatpackBaker
 		var materialFile = Path.Combine( folder, $"{name}_fp.vmat" );
 		File.WriteAllText( materialFile, BuildMaterial(
 			Relative( assetsRoot, albedoFile ), Relative( assetsRoot, normalFile ), raoFile is null ? null : Relative( assetsRoot, raoFile ),
-			n, layout, center, radius, zLocked, mipAlphaScales, searchSteps ) );
+			n, layout, center, radius, zLocked, mipAlphaScales, searchSteps, seeThrough > SeeThroughShare, bakedMetal ) );
 		files.Add( materialFile );
 
 		progress?.Invoke( 0.95f, "Compiling material" );
@@ -248,6 +310,7 @@ public static class FlatpackBaker
 		impostor.ThinDetail = mipAlphaScales[1];
 		impostor.QualityLevel = settings.Quality.ToString();
 		impostor.HoldsUpFrom = 0.0f;
+		impostor.SeeThrough = seeThrough;
 		impostorAsset.SaveToDisk( impostor );
 		files.Add( impostorFile );
 
@@ -265,9 +328,9 @@ public static class FlatpackBaker
 	}
 
 	/// <summary>
-	/// Render every frame and copy it into the CPU atlases.
+	/// Render every frame and copy it into the CPU atlases. Returns whether metalness went into the roughness/AO atlas.
 	/// </summary>
-	static async Task CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius,
+	static async Task<bool> CaptureFramesAsync( Model model, FlatpackLayout layout, int n, int cell, int atlas, Vector3 center, float radius,
 		Color32[] albedo, Color32[] normalDepth, Color32[] rao, bool selfShadow, int supersample, Action<float, string> progress, CancellationToken cancel )
 	{
 		var depthMaterial = Material.Create( "flatpack_bake_depth", DepthShader, true );
@@ -281,6 +344,7 @@ public static class FlatpackBaker
 			ModelRenderer renderer;
 			CameraComponent camera;
 			DirectionalLight sun = null;
+			MetalPass metal = null;
 
 			using ( scene.Push() )
 			{
@@ -309,6 +373,9 @@ public static class FlatpackBaker
 					sun.LightColor = Color.White;
 					sun.Shadows = true;
 				}
+
+				if ( rao is not null )
+					metal = MetalPass.Create( renderer );
 			}
 
 			var frame = new Bitmap( cell * supersample, cell * supersample, false );
@@ -324,7 +391,7 @@ public static class FlatpackBaker
 					var dir = FlatpackMath.FrameDirection( x, y, n, layout );
 
 					Color32[] colorPixels, normalPixels, depthPixels, roughPixels = null, aoPixels = null;
-					byte[] visibility = null;
+					byte[] visibility = null, metalness = null;
 
 					using ( scene.Push() )
 					{
@@ -344,12 +411,19 @@ public static class FlatpackBaker
 
 						if ( selfShadow )
 							visibility = CaptureSkyVisibility( scene, camera, renderer, sun, frame, normalPixels );
+
+						if ( metal is not null )
+						{
+							if ( sun is not null ) sun.Enabled = false;
+							metalness = metal.Capture( scene, camera, renderer, frame );
+							if ( sun is not null ) sun.Enabled = true;
+						}
 					}
 
 					if ( supersample > 1 )
-						Downsample( cell, supersample, ref colorPixels, ref normalPixels, ref depthPixels, ref roughPixels, ref aoPixels, ref visibility );
+						Downsample( cell, supersample, ref colorPixels, ref normalPixels, ref depthPixels, ref roughPixels, ref aoPixels, ref visibility, ref metalness );
 
-					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, albedo, normalDepth, rao );
+					BlitFrame( x, y, cell, atlas, colorPixels, normalPixels, depthPixels, roughPixels, aoPixels, visibility, metalness, albedo, normalDepth, rao );
 
 					var done = y * n + x + 1;
 					progress?.Invoke( done / (float)total * 0.85f, $"Frame {done} of {total}" );
@@ -362,6 +436,8 @@ public static class FlatpackBaker
 					}
 				}
 			}
+
+			return metal is not null;
 		}
 		finally
 		{
@@ -464,11 +540,144 @@ public static class FlatpackBaker
 	}
 
 	/// <summary>
+	/// Bakes metalness. s&amp;box has no metalness debug view and materials store it in different ways (a texture, a
+	/// constant, packed channels), so this solves for it instead of reading it: the Reflect view of the real materials
+	/// against copies forced to metalness 0 and 1, all lit by one light from the camera. Per texel,
+	/// metal = (real - dielectric) / (metal - dielectric).
+	/// </summary>
+	sealed class MetalPass
+	{
+		Material[] _original, _dielectric, _metal;
+		DirectionalLight _light;
+
+		/// <summary>A pass for <paramref name="renderer"/>'s model, or null when none of its materials can be metal.</summary>
+		public static MetalPass Create( ModelRenderer renderer )
+		{
+			var count = renderer.Materials.Count;
+			var pass = new MetalPass { _original = new Material[count], _dielectric = new Material[count], _metal = new Material[count] };
+			var any = false;
+			for ( var i = 0; i < count; i++ )
+			{
+				var source = renderer.Materials.GetOriginal( i );
+				pass._original[i] = source;
+				if ( source is null )
+					continue;
+
+				any |= source.GetFeature( "F_METALNESS_TEXTURE" ) != 0 || source.GetVector4( "g_flMetalness" ).x > 0.0f;
+				pass._dielectric[i] = Forced( source, 0.0f, i );
+				pass._metal[i] = Forced( source, 1.0f, i );
+			}
+
+			if ( !any )
+				return null;
+
+			pass._light = new GameObject( true, "metal light" ).Components.Create<DirectionalLight>();
+			pass._light.LightColor = Color.White;
+			pass._light.Shadows = false;
+			pass._light.Enabled = false;
+			return pass;
+		}
+
+		static Material Forced( Material source, float metalness, int slot )
+		{
+			var copy = source.CreateCopy( $"flatpack_metal_{metalness:0}_{slot}" );
+			copy.SetFeature( "F_METALNESS_TEXTURE", 0 );
+			copy.Set( "g_flMetalness", metalness );
+			return copy;
+		}
+
+		/// <summary>Metalness per pixel of <paramref name="target"/>, 0..255. Call inside the bake scene.</summary>
+		public byte[] Capture( Scene scene, CameraComponent camera, ModelRenderer renderer, Bitmap target )
+		{
+			_light.WorldRotation = camera.WorldRotation;
+			_light.Enabled = true;
+			var real = Render( scene, camera, renderer, target, _original );
+			var low = Render( scene, camera, renderer, target, _dielectric );
+			var high = Render( scene, camera, renderer, target, _metal );
+			_light.Enabled = false;
+			renderer.ClearMaterialOverrides();
+
+			var w = target.Width;
+			var h = target.Height;
+			var count = real.Length;
+			var value = new float[count];
+			var known = new bool[count];
+			for ( var i = 0; i < count; i++ )
+			{
+				if ( real[i].a < 128 )
+					continue;
+
+				float r = Brightness( real[i] ), d = Brightness( low[i] ), m = Brightness( high[i] );
+
+				// Where metal and dielectric reflect alike (dark colours, grazing angles) the solve has nothing to go on;
+				// metalness barely changes the look there anyway. Those texels borrow their neighbours' value below.
+				if ( MathF.Abs( m - d ) < 6.0f )
+					continue;
+
+				value[i] = Math.Clamp( (r - d) / (m - d), 0.0f, 1.0f );
+				known[i] = true;
+			}
+
+			// A few rounds of filling unknown texels from known neighbours; anything still unknown is non-metal.
+			for ( var round = 0; round < 6; round++ )
+			{
+				var next = (bool[])known.Clone();
+				for ( var i = 0; i < count; i++ )
+				{
+					if ( known[i] || real[i].a < 128 )
+						continue;
+
+					int x = i % w, y = i / w, n = 0;
+					var sum = 0.0f;
+					for ( var dy = -1; dy <= 1; dy++ )
+					{
+						for ( var dx = -1; dx <= 1; dx++ )
+						{
+							int nx = x + dx, ny = y + dy;
+							if ( nx < 0 || ny < 0 || nx >= w || ny >= h ) continue;
+							var j = ny * w + nx;
+							if ( !known[j] ) continue;
+							sum += value[j];
+							n++;
+						}
+					}
+
+					if ( n == 0 )
+						continue;
+
+					value[i] = sum / n;
+					next[i] = true;
+				}
+				known = next;
+			}
+
+			var bytes = new byte[count];
+			for ( var i = 0; i < count; i++ )
+				bytes[i] = (byte)Math.Clamp( (int)MathF.Round( value[i] * 255.0f ), 0, 255 );
+			return bytes;
+		}
+
+		static Color32[] Render( Scene scene, CameraComponent camera, ModelRenderer renderer, Bitmap target, Material[] materials )
+		{
+			for ( var i = 0; i < materials.Length; i++ )
+			{
+				if ( materials[i] is not null )
+					renderer.Materials.SetOverride( i, materials[i] );
+			}
+			renderer.Materials.Apply();
+			scene.EditorTick( 0.0f, 0.0f );
+			return FlatpackBaker.Capture( camera, renderer, target, SceneCameraDebugMode.Reflect, null );
+		}
+
+		static float Brightness( Color32 c ) => (c.r + c.g + c.b) / 3.0f;
+	}
+
+	/// <summary>
 	/// Average a supersampled frame down to <paramref name="cell"/> texels a side. Alpha becomes the share of covered
 	/// samples; colour, normal, depth and the material channels average over the covered samples only, so the empty
 	/// background doesn't darken thin parts.
 	/// </summary>
-	static void Downsample( int cell, int ss, ref Color32[] color, ref Color32[] normal, ref Color32[] depth, ref Color32[] rough, ref Color32[] ao, ref byte[] visibility )
+	static void Downsample( int cell, int ss, ref Color32[] color, ref Color32[] normal, ref Color32[] depth, ref Color32[] rough, ref Color32[] ao, ref byte[] visibility, ref byte[] metal )
 	{
 		var size = cell * ss;
 		var outColor = new Color32[cell * cell];
@@ -477,12 +686,13 @@ public static class FlatpackBaker
 		var outRough = rough is null ? null : new Color32[cell * cell];
 		var outAo = ao is null ? null : new Color32[cell * cell];
 		var outVis = visibility is null ? null : new byte[cell * cell];
+		var outMetal = metal is null ? null : new byte[cell * cell];
 
 		for ( var y = 0; y < cell; y++ )
 		{
 			for ( var x = 0; x < cell; x++ )
 			{
-				float r = 0, g = 0, b = 0, a = 0, nx = 0, ny = 0, nz = 0, d = 0, ro = 0, oc = 0, vi = 0;
+				float r = 0, g = 0, b = 0, a = 0, nx = 0, ny = 0, nz = 0, d = 0, ro = 0, oc = 0, vi = 0, me = 0;
 				var covered = 0;
 
 				for ( var sy = 0; sy < ss; sy++ )
@@ -491,10 +701,14 @@ public static class FlatpackBaker
 					{
 						var i = (y * ss + sy) * size + x * ss + sx;
 						var c = color[i];
-						a += c.a;
-						if ( c.a == 0 )
+
+						// The albedo view writes the material's raw opacity. Alpha-tested textures keep their small mips
+						// above the cut on purpose, so averaging that raw value overstates thin detail (a fence panel that's
+						// 12% wire read as 44%). Cut each sample the way the game cuts the real model, then average.
+						if ( c.a < AlphaTestCut )
 							continue;
 
+						a += 255;
 						covered++;
 						r += c.r; g += c.g; b += c.b;
 						nx += normal[i].r / 127.5f - 1.0f; ny += normal[i].g / 127.5f - 1.0f; nz += normal[i].b / 127.5f - 1.0f;
@@ -502,6 +716,7 @@ public static class FlatpackBaker
 						if ( rough is not null ) ro += rough[i].r;
 						if ( ao is not null ) oc += ao[i].r;
 						if ( visibility is not null ) vi += visibility[i];
+						if ( metal is not null ) me += metal[i];
 					}
 				}
 
@@ -522,17 +737,18 @@ public static class FlatpackBaker
 				if ( outRough is not null ) { var v = B( ro / covered ); outRough[o] = new Color32( v, v, v, 255 ); }
 				if ( outAo is not null ) { var v = B( oc / covered ); outAo[o] = new Color32( v, v, v, 255 ); }
 				if ( outVis is not null ) outVis[o] = B( vi / covered );
+				if ( outMetal is not null ) outMetal[o] = B( me / covered );
 			}
 		}
 
-		color = outColor; normal = outNormal; depth = outDepth; rough = outRough; ao = outAo; visibility = outVis;
+		color = outColor; normal = outNormal; depth = outDepth; rough = outRough; ao = outAo; visibility = outVis; metal = outMetal;
 	}
 
 	/// <summary>
 	/// Copy one frame's passes into the atlases. Uncovered texels stay fully clear for the dilation pass.
 	/// </summary>
 	static void BlitFrame( int fx, int fy, int cell, int atlas, Color32[] color, Color32[] normal, Color32[] depth, Color32[] rough, Color32[] ao,
-		byte[] visibility, Color32[] albedoAtlas, Color32[] normalAtlas, Color32[] raoAtlas )
+		byte[] visibility, byte[] metal, Color32[] albedoAtlas, Color32[] normalAtlas, Color32[] raoAtlas )
 	{
 		for ( var py = 0; py < cell; py++ )
 		{
@@ -559,8 +775,9 @@ public static class FlatpackBaker
 				var n = normal[src];
 				normalAtlas[dst] = new Color32( n.r, n.g, n.b, Math.Max( depth[src].r, (byte)1 ) );
 
+				// Metalness rides in alpha as 1 + metal x 254 (never 0, which would wipe the colour; see the shader).
 				if ( raoAtlas is not null )
-					raoAtlas[dst] = new Color32( rough[src].r, ao[src].r, visibility?[src] ?? 255, 255 );
+					raoAtlas[dst] = new Color32( rough[src].r, ao[src].r, visibility?[src] ?? 255, metal is null ? (byte)255 : (byte)(1 + metal[src] * 254 / 255) );
 			}
 		}
 	}
@@ -698,7 +915,7 @@ public static class FlatpackBaker
 		return scales;
 	}
 
-	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales, int searchSteps )
+	static string BuildMaterial( string albedo, string normal, string rao, int n, FlatpackLayout layout, Vector3 center, float radius, bool zLocked, float[] mipAlphaScales, int searchSteps, bool seeThrough, bool bakedMetal )
 	{
 		string F( float v ) => v.ToString( "0.000000", CultureInfo.InvariantCulture );
 
@@ -719,6 +936,10 @@ public static class FlatpackBaker
 		sb.AppendLine( $"\tg_vFlatpackMipAlpha0 \"[{F( mipAlphaScales[0] )} {F( mipAlphaScales[1] )} {F( mipAlphaScales[2] )} {F( mipAlphaScales[3] )}]\"" );
 		sb.AppendLine( $"\tg_vFlatpackMipAlpha1 \"[{F( mipAlphaScales[4] )} {F( mipAlphaScales[5] )} {F( mipAlphaScales[6] )} {F( mipAlphaScales[7] )}]\"" );
 		sb.AppendLine( $"\tg_flFlatpackSearchSteps \"{F( Math.Clamp( searchSteps, 0, 32 ) )}\"" );
+		// See-through bakes start from a typical fit; the bake check fits both to the model after baking.
+		sb.AppendLine( $"\tg_flFlatpackSoftCoverage \"{F( seeThrough ? 1.5f : 0.0f )}\"" );
+		sb.AppendLine( $"\tg_flFlatpackSoftGrowth \"{F( seeThrough ? 0.5f : 0.0f )}\"" );
+		sb.AppendLine( $"\tg_flFlatpackBakedMetal \"{F( bakedMetal ? 1.0f : 0.0f )}\"" );
 		sb.AppendLine( "}" );
 		return sb.ToString();
 	}

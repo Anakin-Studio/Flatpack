@@ -71,12 +71,12 @@ Measured in [`Benchmarks/iteration-5-measure-and-auto`](../Benchmarks/iteration-
    tree look flat on the card (weed tree, ferns).
 8. **Wind on cards (S).** The engine already has global wind values (`g_vWindDirection`); sway the card's top corners a
    little and fade it out with distance, as SpeedTree and Unity do for billboards. Fixes: still trees next to swaying ones.
-9. **Fences and fine mesh (S to M).** At a distance, let alpha-to-coverage show partial coverage (s&box uses MSAA, no
-   TAA) instead of clipping mip-averaged alpha, so wire mesh reads as see-through instead of a solid panel. Hashed alpha
-   testing is the published alternative, but a patent covers part of it, so try coverage first.
-10. **Metal parts (M).** Store metalness in the roughness/AO map's spare channel. s&box has no metalness debug view, so
-    the baker reads each source material's metalness value and renders a per-material pass. Fixes: chair wheels and
-    the dragon's base light like plastic.
+9. **Fences and fine mesh (S to M). Done in iteration 7.** Alpha-to-coverage had no effect (no MSAA in the render
+   path), a dither read as noise, coverage-preserving mips didn't thicken; a lowered cut that grows with screen size,
+   fitted per bake, keeps wires as lines, and Auto bakes see-through models at Ultra. Left: speckle past 24 radii and
+   a faint dotted line above the top rail seen from slightly above.
+10. **Metal parts (M). Done in iteration 7.** Materials store metalness in different ways, so the baker solves for it
+    from the Reflect view (real against forced 0 and 1) and stores it in the roughness/AO map's alpha.
 11. **Grazing-angle streaks (M).** Flat surfaces seen edge-on (a chair seat at 2 radii) show stair-step streaks at
     every quality level: the search lands on neighbouring texels of a steep depth slope. Try a filtered final
     refinement step, or a slope-aware thickness.

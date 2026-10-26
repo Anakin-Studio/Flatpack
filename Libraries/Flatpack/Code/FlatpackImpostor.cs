@@ -78,6 +78,12 @@ public sealed class FlatpackImpostor : GameResource
 	/// </summary>
 	[Property, ReadOnly] public float HoldsUpFrom { get; set; }
 
+	/// <summary>
+	/// Share of the covered texels that are only partly covered (0 to 1). Above <c>0.4</c> the bake is treated as
+	/// see-through detail (wire mesh, twigs, nets) and drawn with a lowered alpha cut the baker fits to the model.
+	/// </summary>
+	[Property, ReadOnly] public float SeeThrough { get; set; }
+
 	Model _cardModel;
 	Material _cardMaterial;
 

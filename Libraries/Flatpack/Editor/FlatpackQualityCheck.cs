@@ -99,6 +99,114 @@ public static class FlatpackQualityCheck
 	}
 
 	/// <summary>
+	/// For see-through bakes: find the Soft Coverage strength and growth that make the card cover as much of the screen as
+	/// the real model does at 8, 16 and 32 bounding radii (where cards show), from two sides, at the pixel density of a
+	/// 1080p game view. Both go through the normal lit path (the debug views change how alpha-tested meshes resolve) onto
+	/// a white background in an unlit scene, so a covered pixel is a dark one. Leaves the best values set on the
+	/// impostor's material and returns them.
+	/// </summary>
+	public static async Task<(float Soft, float Growth)> FitSoftCoverageAsync( FlatpackImpostor impostor, CancellationToken cancel = default )
+	{
+		var strengths = new[] { 1.0f, 1.25f, 1.5f, 1.75f, 2.0f, 2.5f, 3.0f, 4.0f };
+		var growths = new[] { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f };
+		var distances = new[] { 8f, 16f, 32f };
+		var views = new[] { Views[0], Views[2] };
+		var material = impostor.Material;
+
+		var scene = Scene.CreateEditorScene();
+		scene.Name = "Flatpack Coverage Fit";
+		try
+		{
+			ModelRenderer model, card;
+			CameraComponent camera;
+			using ( scene.Push() )
+			{
+				model = new GameObject( true, "model" ).Components.Create<ModelRenderer>();
+				model.Model = impostor.SourceModel;
+				model.LodOverride = 0;
+				card = new GameObject( true, "card" ).Components.Create<ModelRenderer>();
+				card.Model = impostor.CardModel;
+				camera = new GameObject( true, "camera" ).Components.Create<CameraComponent>();
+				camera.BackgroundColor = Color.White;
+			}
+
+			// Each shot: framing for one distance and side, and the model's covered pixel count there.
+			var shots = new List<(Vector3 Position, Rotation Rotation, float Fov, Bitmap Target, long Model)>();
+			foreach ( var k in distances )
+			{
+				var halfAngle = MathF.Atan( 1.15f / k );
+				// 1920 pixels across a 70 degree view: about 1371 pixels per unit of tangent.
+				var size = Math.Clamp( (int)(1371.0f * 2.0f * MathF.Tan( halfAngle )), 24, 1024 );
+				foreach ( var view in views )
+				{
+					var dir = view.ToRotation().Backward;
+					var shot = ( impostor.Center + dir * impostor.Radius * k, Rotation.LookAt( -dir, Vector3.Up ), halfAngle * 2.0f * (180.0f / MathF.PI), new Bitmap( size, size, false ), 0L );
+					shot.Item5 = Covered( await Render( scene, camera, model, card, impostor, shot.Item1, shot.Item2, shot.Item3, shot.Item4, false ) );
+					shots.Add( shot );
+				}
+			}
+
+			var best = (Soft: 1.0f, Growth: 1.0f, Error: double.MaxValue);
+			foreach ( var soft in strengths )
+			{
+				foreach ( var growth in growths )
+				{
+					cancel.ThrowIfCancellationRequested();
+					material.Set( "g_flFlatpackSoftCoverage", soft );
+					material.Set( "g_flFlatpackSoftGrowth", growth );
+					double error = 0;
+					foreach ( var shot in shots )
+					{
+						var c = Covered( await Render( scene, camera, model, card, impostor, shot.Position, shot.Rotation, shot.Fov, shot.Target, true ) );
+						var rel = (c - shot.Model) / (double)Math.Max( shot.Model, 1 );
+						error += rel * rel;
+					}
+					if ( error < best.Error )
+						best = (soft, growth, error);
+				}
+			}
+
+			material.Set( "g_flFlatpackSoftCoverage", best.Soft );
+			material.Set( "g_flFlatpackSoftGrowth", best.Growth );
+			return (best.Soft, best.Growth);
+		}
+		finally
+		{
+			scene.Destroy();
+		}
+	}
+
+	static async Task<Color32[]> Render( Scene scene, CameraComponent camera, ModelRenderer model, ModelRenderer card, FlatpackImpostor impostor,
+		Vector3 position, Rotation rotation, float fov, Bitmap target, bool showCard )
+	{
+		using ( scene.Push() )
+		{
+			camera.FieldOfView = fov;
+			camera.WorldPosition = position;
+			camera.WorldRotation = rotation;
+			var d = (position - impostor.Center).Length;
+			camera.ZNear = MathF.Max( 0.1f, (d - impostor.Radius * 1.2f) * 0.5f );
+			camera.ZFar = d + impostor.Radius * 2.0f;
+			impostor.MarkAtlasesUsed();
+			model.Enabled = !showCard;
+			card.Enabled = showCard;
+			scene.EditorTick( 0.0f, 0.0f );
+			camera.RenderToBitmap( target );
+		}
+		await Task.Delay( 1 );
+		return target.GetPixels32();
+	}
+
+	/// <summary>Pixels clearly darker than the white background.</summary>
+	static long Covered( Color32[] pixels )
+	{
+		long n = 0;
+		foreach ( var p in pixels )
+			if ( p.r + p.g + p.b < 600 ) n++;
+		return n;
+	}
+
+	/// <summary>
 	/// Compare <paramref name="impostor"/> against its source model. <paramref name="upTo"/> stops early, for a quick check
 	/// at one distance (it still checks the distances below it).
 	/// </summary>

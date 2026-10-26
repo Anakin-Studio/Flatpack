@@ -72,7 +72,7 @@ that difference changes about half as much from one step to the next, which is w
 | Vehicles and props | about 3 radii | about 300 px tall |
 | Trees and ferns | 6 to 8 radii | 130 to 160 px tall |
 | Thin spindles, twigs | about 16 radii | about 60 px tall |
-| Fine wire mesh (fences) | doesn't hold up well; keep as a real model | |
+| Fine wire mesh (fences) | about 6 radii at Ultra (see-through bakes, iteration 7) | about 160 px tall |
 
 The default swap happens at 30 radii, well past all of these. Full per-model numbers:
 [`Benchmarks/iteration-3-ten-models`](Benchmarks/iteration-3-ten-models/README.md).
@@ -249,9 +249,10 @@ quad's position and size and builds the card from the bake data and the instance
 | Output Folder | next to the model | Relative to `Assets`. |
 
 The impostor material (`<name>_fp.vmat`) has a few dials of its own: **Search Steps** (depth trace quality, set by the
-quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness**, **Shadow Bias**, **Miss Fallback** (keeps
-some sub-step twigs at the cost of ghosting, off by default) and **Sky Occlusion** (darkens enclosed parts using the
-self-shadow bake, for dense foliage). The baker also writes per-mip alpha corrections it measured from the atlas, so
+quality level), **Thickness**, **Blend Sharpness**, **Alpha Clip**, **Metalness** (added to the baked metalness),
+**Shadow Bias**, **Miss Fallback** (keeps some sub-step twigs at the cost of ghosting, off by default), **Sky Occlusion**
+(darkens enclosed parts using the self-shadow bake, for dense foliage) and, for see-through bakes, **Soft Coverage** and
+**Soft Growth** (the baker fits both to the model). The baker also writes per-mip alpha corrections it measured from the atlas, so
 thin parts keep their coverage as the card shrinks.
 
 ## How it works
@@ -271,16 +272,16 @@ trace runs (6 to 29% less GPU time in a dense forest).
 
 ## Limits
 
-- Metal parts bake as plain colour, so they light like painted plastic. s&box has no metalness debug view to read
-  from. Each material has one Metalness slider for the whole object.
 - Up close the card is only as sharp as one frame: about 170 pixels across at Medium. Flat surfaces seen at a grazing
   angle (a chair seat at 2 radii) show stair-step streaks at every level.
 - In a dense crowd seen from inside, cards can cost more GPU time than simple models (a 912-triangle chair: 1.9 ms as
   models, 7.3 ms as cards). Cards pay off at a distance; that's what the swap distance is for.
 - Hemisphere bakes can't show an object from below. Use Sphere for those.
 - Foliage shaders with translucency or wind lose those effects on the card. The card uses standard lighting.
-- Very thin parts (twigs, spindles, wires) thinner than one texel can't survive the bake, and a fine wire mesh fills
-  in to a solid panel at a distance. Keep fences as real models.
+- Very thin parts (twigs, spindles) thinner than one texel can't survive the bake. Wire mesh works from about 6 radii
+  at Ultra (the baker spots it and fits the card to the model), but past 24 radii it speckles where the real fence
+  shows a tidy grid. A light fence is also cheaper to draw as itself: 2,500 fences took 14.0 ms as models and 15.0 to
+  17.4 ms as cards.
 - Below about 2 bounding radii the card stops matching the model. Swap well before that (the default is 30).
 
 ## This repository

@@ -5,6 +5,36 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-25: See-through detail and baked metalness (iteration 7)
+
+- Change:
+  - Shader: Soft Coverage (`g_flFlatpackSoftCoverage`) and Soft Growth (`g_flFlatpackSoftGrowth`). Above 0, the card
+    multiplies its coverage by the strength, and by `2^(growth x log2(texels per pixel))`, before the alpha cut, in
+    place of the thin-part boost. Sub-texel wires stay solid lines and thicken as the card shrinks, like a real
+    alpha-tested mesh. The depth pass uses the same coverage. 0 (the default) leaves solid models unchanged.
+  - Baked metalness. The baker solves for it per texel from the Reflect view (real materials against copies forced to
+    metalness 0 and 1, under one light) and stores it in the roughness/AO map's alpha as `1 + metal x 254`;
+    `g_flFlatpackBakedMetal` turns it on, so older bakes are unchanged. Runs only for models with a metal-capable
+    material. Fence wires now light like the real ones (63 against 65, were 101).
+  - Baker: measures the share of partly covered atlas texels (`FlatpackImpostor.SeeThrough`). Above 0.4 it writes
+    starting values for both dials and, when Measure Quality is on, fits them against the model
+    (`FlatpackQualityCheck.FitSoftCoverageAsync`: 8, 16 and 32 radii, two sides, 1080p density, lit path) and patches
+    the `.vmat`. Auto quality sends see-through bakes straight to Ultra (Medium doubles a wire panel at an angle). The
+    per-sample alpha test in the supersample downsample now cuts at 128, like s&box materials.
+  - Fence: holds up from 6 radii instead of never; coverage within 3.3 points of the real fence at 6 to 32 radii (was
+    up to 6.7 short). Weed tree: holds up from 8 radii instead of 12. GPU: a field of 2,500 fences is slower as cards
+    (14.0 ms real, 15.0 to 17.4 ms with cards), because a 538-triangle fence is cheaper than the card's depth search.
+  - Iteration 7 benchmarks; README limits, swap table and material dials; roadmap items 9 and 10.
+- Files: `Libraries/Flatpack/Assets/shaders/flatpack_impostor.shader` (+ `.shader_c`),
+  `Libraries/Flatpack/Code/FlatpackImpostor.cs`, `Libraries/Flatpack/Editor/FlatpackBaker.cs`,
+  `Libraries/Flatpack/Editor/FlatpackQualityCheck.cs`; `Benchmarks/iteration-7-see-through/**`,
+  `Benchmarks/README.md`, `README.md`, `docs/ROADMAP.md`
+- Testing: editor. Auto bakes of the fence, weed tree, chair and knight (chair and knight unchanged at Low; knight's
+  metal solves to 0). Play-mode bench at 6 to 32 radii, face-on and at an angle, real model against the old and new
+  card; lit, Reflect and material debug views compared at 6 radii; 2,500-fence GPU field test, two rounds each. Tried
+  and dropped (in the benchmark README): alpha-to-coverage, dithering, mip-keyed growth, coverage-preserving mips,
+  view snapping, sharper mips. Compiles clean.
+
 ## 2026-10-25: Real maps, fly-throughs, graphics levels, bake estimates (iteration 6, part 2)
 
 - Change:

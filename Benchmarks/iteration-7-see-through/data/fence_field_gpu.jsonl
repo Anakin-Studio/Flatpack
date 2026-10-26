@@ -1,0 +1,12 @@
+{"label": "native", "round": 1, "swap": 0, "info": {"count": 2500, "cards": 0}, "gpu_samples": " 13.34 13.42 13.36 13.36 13.43 13.41", "render": {"tris": 1344436, "draws": 292}}
+{"label": "ultra_swap8", "round": 1, "swap": 8, "info": {"count": 2500, "cards": 2492}, "gpu_samples": " 17.44 17.56 17.53 17.6 17.49 17.58", "render": {"tris": 47309, "draws": 137}}
+{"label": "medium_swap8", "round": 1, "swap": 8, "info": {"count": 2500, "cards": 2492}, "gpu_samples": " 16.64 16.57 16.7 16.57 16.56 16.61", "render": {"tris": 47309, "draws": 139}}
+{"label": "native", "round": 2, "swap": 0, "info": {"count": 2500, "cards": 0}, "gpu_samples": " 13.52 13.74 13.63 13.66 13.64 13.36", "render": {"tris": 1344436, "draws": 288}}
+{"label": "ultra_swap8", "round": 2, "swap": 8, "info": {"count": 2500, "cards": 2492}, "gpu_samples": " 16.24 16.95 17.16 17.28 17.16 17.18", "render": {"tris": 47309, "draws": 153}}
+{"label": "medium_swap8", "round": 2, "swap": 8, "info": {"count": 2500, "cards": 2492}, "gpu_samples": " 16.93 16.95 16.95 16.99 17.14 15.36", "render": {"tris": 47309, "draws": 135}}
+{"label": "native", "round": 3, "swap": 0, "info": {"count": 2500, "cards": 0}, "gpu_samples": " 14.2 14.4 14.46 14.4 14.53 14.55", "render": {"tris": 1344436, "draws": 292}}
+{"label": "ultra_swap16", "round": 1, "swap": 16, "info": {"count": 2500, "cards": 2457}, "gpu_samples": " 15.67 15.59 15.33 15.41 15.39 15.38", "render": {"tris": 116429, "draws": 194}}
+{"label": "ultra_swap30", "round": 1, "swap": 30, "info": {"count": 2500, "cards": 2346}, "gpu_samples": " 14.69 14.6 14.68 14.66 14.92 15.36", "render": {"tris": 270523, "draws": 254}}
+{"label": "native", "round": 4, "swap": 0, "info": {"count": 2500, "cards": 0}, "gpu_samples": " 15.05 13.88 15.74 13.45 16.03 13.79", "render": {"tris": 1344436, "draws": 292}}
+{"label": "ultra_swap16", "round": 2, "swap": 16, "info": {"count": 2500, "cards": 2457}, "gpu_samples": " 16.99 16.26 16.07 16.62 16.86 16.92", "render": {"tris": 116429, "draws": 200}}
+{"label": "ultra_swap30", "round": 2, "swap": 30, "info": {"count": 2500, "cards": 2346}, "gpu_samples": " 15.31 15.88 15.43 15.92 15.38 15.28", "render": {"tris": 270523, "draws": 244}}
