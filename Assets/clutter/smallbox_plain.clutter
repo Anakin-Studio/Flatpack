@@ -1,0 +1,46 @@
+{
+  "Entries": [
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "56a212f8-3333-4b11-840d-25c598c1ec1b",
+        "Path": "pr/small/small_01/tree_small_01.vmdl"
+      },
+      "Weight": 1,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "pr/small/small_01/tree_small_01.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "c967683b-08d3-416b-ac58-0bb098fcf3bd",
+        "Path": "pr/small/tree_small_03.vmdl"
+      },
+      "Weight": 1,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "pr/small/tree_small_03.vmdl"
+    }
+  ],
+  "IsEmpty": false,
+  "TileSizeEnum": "Size2048",
+  "TileRadius": 4,
+  "Scatterer": {
+    "Type": "SimpleScatterer",
+    "Scale": "1.60000002 2.4000001",
+    "Density": 0.04,
+    "PlaceOnGround": true,
+    "HeightOffset": -4,
+    "AlignToNormal": false
+  },
+  "__references": [
+    "smallboxstudio.treesmall01#146333",
+    "smallboxstudio.treesmall03#146298"
+  ],
+  "__version": 0
+}

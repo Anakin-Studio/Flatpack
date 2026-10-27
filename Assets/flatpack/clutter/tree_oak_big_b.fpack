@@ -1,0 +1,27 @@
+{
+  "SourceModel": {
+    "Id": "3be49c55-4dfb-430d-a6b4-a6dba7fdee2e",
+    "Path": "models/sbox_props/trees/oak/tree_oak_big_b.vmdl"
+  },
+  "Material": {
+    "Id": "efbff31d-7524-47de-b0f5-7f9454d53ad6",
+    "Path": "flatpack/clutter/tree_oak_big_b_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "-27.8324566,-8.24380112,433.343201",
+  "Radius": 522.766,
+  "Bounds": {
+    "Mins": "-358.213776,-376.234192,-72.4510574",
+    "Maxs": "377.861298,413.68631,950.99115"
+  },
+  "ThinDetail": 1,
+  "QualityLevel": "Medium",
+  "HoldsUpFrom": 6,
+  "SeeThrough": 0.098245114,
+  "__references": [
+    "facepunch.tree_oak_big_b#288918"
+  ],
+  "__version": 0
+}

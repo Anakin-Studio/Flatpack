@@ -1,0 +1,43 @@
+{
+  "Entries": [
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "f055e599-a70f-4f09-847a-ed575a57c19a",
+        "Path": "flatpack/clutter/tree_small_01_flatpack.vmdl"
+      },
+      "Weight": 1,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_small_01_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "180492a4-c0a3-4dc6-a69a-5570f799b2ea",
+        "Path": "flatpack/clutter/tree_small_03_flatpack.vmdl"
+      },
+      "Weight": 1,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_small_03_flatpack.vmdl"
+    }
+  ],
+  "IsEmpty": false,
+  "TileSizeEnum": "Size2048",
+  "TileRadius": 4,
+  "Scatterer": {
+    "Type": "SimpleScatterer",
+    "Scale": "1.60000002 2.4000001",
+    "Density": 0.04,
+    "PlaceOnGround": true,
+    "HeightOffset": -4,
+    "AlignToNormal": false
+  },
+  "__references": [],
+  "__version": 0
+}

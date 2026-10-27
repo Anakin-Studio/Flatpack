@@ -5,6 +5,31 @@ Flatpack by Anakin Studio. Newest entries first.
 Testing levels: **static** (read through, not compiled), **compiled** (editor compile succeeded),
 **editor** (exercised in the running s&box editor).
 
+## 2026-10-27: Clutter demo scenes and screenshots
+
+- Change:
+  - Two scenes that scatter Flatpack LOD models (built with `FlatpackLodModel`) through s&box's Clutter system, styled
+    after the Clutter docs image: a terrain meadow with a dirt path, Volume-mode forests around it, meadow trees painted
+    through the Clutter paint API and undergrowth. Clutter picks the card by distance like any other LOD; nothing
+    Flatpack-specific runs at runtime.
+  - `flatpack_clutter`: five Facepunch oaks and two beech shrubs. GPU time is a wash against the plain models, 38.7 ms
+    (25 FPS) against 38.9 ms (25 FPS), because the oaks ship with good LODs (a far oak is about 2,700 triangles).
+  - `flatpack_clutter_smallbox`: 4,365 Small Box trees. Clutter draws at most four LODs, so a far plain tree stays at
+    400,780 triangles: plain 966 ms (1.1 FPS) against Flatpack 21.7 ms (40 FPS), frame time.
+  - Matching definitions (`forest_*`, `smallbox_*`) hold the same entries as Flatpack and plain models, so the same
+    seeds give the same trees for comparisons. Five screenshots in the package page style.
+  - `.gitignore`: the LOD models are only saved compiled (`*_flatpack.vmdl_c`) and the two scenes' data blobs hold the
+    painted trees, so both are kept. The two Small Box LOD models stay out (110 MB and 98 MB, over GitHub's file
+    limit): rebuild them from their `.fpack` with `FlatpackLodModel.Build` and `SaveAsync` before opening that scene.
+- Files: `Assets/scenes/flatpack_clutter{.scene,.scene_d,.terrain,.terrain_d}`,
+  `Assets/scenes/flatpack_clutter_smallbox{.scene,.scene_d}`, `Assets/clutter/*.clutter`, `Assets/flatpack/clutter/**`,
+  `marketing/clutter_{1_scene,2_cards_revealed,3_plain_vs_flatpack,4_smallbox_plain_vs_flatpack,5_smallbox_cards_revealed}.png`,
+  `.gitignore`
+- Testing: editor. Bakes at Medium with quality measured; three interleaved play-mode runs per side on an RTX 3090 at
+  2038 x 740 (oaks: GPU time from the perf hub; Small Box: frame time from game time, since the perf hub's GPU timer
+  froze on a stale value after the plain forest's first frame stalled the GPU for about 57 s). Plain and Flatpack
+  frames differ in 0.8% (oaks) and 3.6% (Small Box) of pixels by more than 20 levels.
+
 ## 2026-10-26: Five more package page screenshots
 
 - Change: the sbox.game kit gains screenshots 4 to 8, rendered with iteration 8 bakes of the two Small Box trees: a

@@ -1,0 +1,88 @@
+{
+  "Entries": [
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "b0fd8979-fe1a-4f51-b2e6-38eea6015afb",
+        "Path": "models/sbox_props/trees/oak/tree_oak_big_a.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/trees/oak/tree_oak_big_a.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "3be49c55-4dfb-430d-a6b4-a6dba7fdee2e",
+        "Path": "models/sbox_props/trees/oak/tree_oak_big_b.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/trees/oak/tree_oak_big_b.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "5c1a1a76-5b66-4691-a6c8-8e2f087264a6",
+        "Path": "models/sbox_props/trees/oak/tree_oak_medium_a.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/trees/oak/tree_oak_medium_a.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "cfcc2cb2-9f53-4266-af7d-713731930cc5",
+        "Path": "models/sbox_props/trees/oak/tree_oak_dry_big_a.vmdl"
+      },
+      "Weight": 1.8,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/trees/oak/tree_oak_dry_big_a.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "20b8e035-f341-4d44-9e30-57138de23c05",
+        "Path": "models/sbox_props/trees/oak/tree_oak_dry_medium_a.vmdl"
+      },
+      "Weight": 2.2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/trees/oak/tree_oak_dry_medium_a.vmdl"
+    }
+  ],
+  "IsEmpty": false,
+  "TileSizeEnum": "Size2048",
+  "TileRadius": 4,
+  "Scatterer": {
+    "Type": "SimpleScatterer",
+    "Scale": "0.449999988 0.800000012",
+    "Density": 0.05,
+    "PlaceOnGround": true,
+    "HeightOffset": -6,
+    "AlignToNormal": false
+  },
+  "__references": [
+    "facepunch.tree_oak_big_a#288919",
+    "facepunch.tree_oak_big_b#288918",
+    "facepunch.tree_oak_medium_a#288916",
+    "facepunch.treeoakdrybiga#288924",
+    "facepunch.treeoakdrymediuma#289352"
+  ],
+  "__version": 0
+}

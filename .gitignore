@@ -38,6 +38,12 @@ Assets/flatpack/gallery/
 Assets/shaders/flatpack_impostor_v1.*
 Assets/flatpack/sweep/
 
+# Clutter demo: the LOD models are only ever saved compiled, and the scenes' data blobs hold the painted trees
+!Assets/flatpack/clutter/*_flatpack.vmdl_c
+# The Small Box LOD models are about 100 MB each (GitHub's file limit); rebuild them from the .fpack with FlatpackLodModel
+Assets/flatpack/clutter/tree_small_0*_flatpack.vmdl_c
+!Assets/scenes/flatpack_clutter*.scene_d
+
 # Local copy of the Orion SCP-RP map for real-scene tests (never committed: Orion assets, mixed licences)
 Assets/materials/
 Assets/textures/

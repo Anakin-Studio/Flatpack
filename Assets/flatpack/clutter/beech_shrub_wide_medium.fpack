@@ -1,0 +1,27 @@
+{
+  "SourceModel": {
+    "Id": "07933e2d-970a-4acb-a707-c4cccfb1fca1",
+    "Path": "models/sbox_props/shrubs/beech/beech_shrub_wide_medium.vmdl"
+  },
+  "Material": {
+    "Id": "933ead6a-c447-4410-a003-51de03eff23f",
+    "Path": "flatpack/clutter/beech_shrub_wide_medium_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "-9.21865273,3.37499571,39.2360764",
+  "Radius": 108.79838,
+  "Bounds": {
+    "Mins": "-98.5039597,-93.9725647,-15.564559",
+    "Maxs": "87.5034714,100.444817,97.1708527"
+  },
+  "ThinDetail": 1.0630536,
+  "QualityLevel": "Medium",
+  "HoldsUpFrom": 12,
+  "SeeThrough": 0.27665138,
+  "__references": [
+    "facepunch.beech_shrub_wide_medium#145477"
+  ],
+  "__version": 0
+}

@@ -1,0 +1,27 @@
+{
+  "SourceModel": {
+    "Id": "20b8e035-f341-4d44-9e30-57138de23c05",
+    "Path": "models/sbox_props/trees/oak/tree_oak_dry_medium_a.vmdl"
+  },
+  "Material": {
+    "Id": "6ac89b57-8c3b-4f27-b114-103423210991",
+    "Path": "flatpack/clutter/tree_oak_dry_medium_a_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "2.33422589,41.0858917,321.58905",
+  "Radius": 381.56738,
+  "Bounds": {
+    "Mins": "-299.720032,-279.203705,-45.0863342",
+    "Maxs": "310.429657,296.559296,703.729248"
+  },
+  "ThinDetail": 1,
+  "QualityLevel": "Medium",
+  "HoldsUpFrom": 8,
+  "SeeThrough": 0.09278006,
+  "__references": [
+    "facepunch.treeoakdrymediuma#289352"
+  ],
+  "__version": 0
+}

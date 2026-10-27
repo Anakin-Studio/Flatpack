@@ -1,0 +1,27 @@
+{
+  "SourceModel": {
+    "Id": "c967683b-08d3-416b-ac58-0bb098fcf3bd",
+    "Path": "pr/small/tree_small_03.vmdl"
+  },
+  "Material": {
+    "Id": "2c2194e6-54f2-4045-8283-fa96d85404fe",
+    "Path": "flatpack/clutter/tree_small_03_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "30.8027515,4.42858696,108.552002",
+  "Radius": 146.97548,
+  "Bounds": {
+    "Mins": "-100,-100,-0.252152413",
+    "Maxs": "100,100,242.572556"
+  },
+  "ThinDetail": 1.0287443,
+  "QualityLevel": "Medium",
+  "HoldsUpFrom": 6,
+  "SeeThrough": 0.1434699,
+  "__references": [
+    "smallboxstudio.treesmall03#146298"
+  ],
+  "__version": 0
+}

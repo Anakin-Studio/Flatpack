@@ -1,0 +1,27 @@
+{
+  "SourceModel": {
+    "Id": "435a4eac-1263-4695-813d-17946ccc8cf3",
+    "Path": "models/sbox_props/shrubs/beech/beech_bush_medium.vmdl"
+  },
+  "Material": {
+    "Id": "82fdba45-15de-4c16-8cd5-b0e3bbea5b9c",
+    "Path": "flatpack/clutter/beech_bush_medium_fp.vmat"
+  },
+  "Layout": "Hemisphere",
+  "GridSize": 12,
+  "AtlasSize": 2040,
+  "Center": "3.07246304,7.7282629,10.136692",
+  "Radius": 104.94229,
+  "Bounds": {
+    "Mins": "-98.6475525,-83.5842514,-26.7228107",
+    "Maxs": "96.7652893,86.6937637,68.2389755"
+  },
+  "ThinDetail": 1.0625001,
+  "QualityLevel": "Medium",
+  "HoldsUpFrom": 12,
+  "SeeThrough": 0.22879629,
+  "__references": [
+    "facepunch.beech_bush_medium#145428"
+  ],
+  "__version": 0
+}

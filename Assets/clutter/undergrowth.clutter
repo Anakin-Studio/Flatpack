@@ -1,0 +1,156 @@
+{
+  "Entries": [
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "5123e82a-c336-47ca-8e70-e196305369b8",
+        "Path": "flatpack/clutter/beech_shrub_wide_medium_flatpack.vmdl"
+      },
+      "Weight": 1.2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/beech_shrub_wide_medium_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "10223def-ca86-432a-8e6d-67a9e3932eb5",
+        "Path": "flatpack/clutter/beech_bush_medium_flatpack.vmdl"
+      },
+      "Weight": 1.2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/beech_bush_medium_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "48929d08-3ff8-4dd7-9334-395ec4efbd2b",
+        "Path": "models/sbox_props/shrubs/beech/beech_bush_regular_medium_a.vmdl"
+      },
+      "Weight": 1,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/shrubs/beech/beech_bush_regular_medium_a.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "74b32e6c-5b9a-47ed-9a15-8838083922c7",
+        "Path": "models/props/nature/weeds/large_weed_clump.vmdl"
+      },
+      "Weight": 2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/props/nature/weeds/large_weed_clump.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "d53b7c7c-b045-4235-b354-12633c7af581",
+        "Path": "models/props/nature/weeds/dock_weed_clump.vmdl"
+      },
+      "Weight": 2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/props/nature/weeds/dock_weed_clump.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "4ba4a233-bb25-4ed6-b588-3cd583e58a9d",
+        "Path": "models/sbox_props/nature/grass_clumps/grass_clump_a.vmdl"
+      },
+      "Weight": 4,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/nature/grass_clumps/grass_clump_a.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "b8b18e57-7dfb-4425-88b8-4047df67e445",
+        "Path": "models/sbox_props/nature/grass_clumps/grass_clump_b.vmdl"
+      },
+      "Weight": 4,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/nature/grass_clumps/grass_clump_b.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "75929b71-aed2-449e-afea-96be7db1679f",
+        "Path": "models/sbox_props/nature/grass_clumps/grass_clump_c.vmdl"
+      },
+      "Weight": 4,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/nature/grass_clumps/grass_clump_c.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "a4ef3047-55df-481d-a6eb-c73fc64849b8",
+        "Path": "models/sbox_props/nature/tallgrass/tallgrass_c.vmdl"
+      },
+      "Weight": 5,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/sbox_props/nature/tallgrass/tallgrass_c.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "a2d9a812-0e89-4179-8fd9-0efbf3807331",
+        "Path": "models/props/nature/weeds/yellow_weed_flower.vmdl"
+      },
+      "Weight": 1.5,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "models/props/nature/weeds/yellow_weed_flower.vmdl"
+    }
+  ],
+  "IsEmpty": false,
+  "TileSizeEnum": "Size1024",
+  "TileRadius": 4,
+  "Scatterer": {
+    "Type": "SimpleScatterer",
+    "Scale": "0.800000012 1.29999995",
+    "Density": 0.45,
+    "PlaceOnGround": true,
+    "HeightOffset": -2,
+    "AlignToNormal": false
+  },
+  "__references": [
+    "facepunch.beech_bush_regular_medium_a#145432",
+    "facepunch.dock_weed_clump#335478",
+    "facepunch.grass_clump_a#307477",
+    "facepunch.grass_clump_b#307478",
+    "facepunch.grass_clump_c#307479",
+    "facepunch.large_weed_clump#424041",
+    "facepunch.tallgrass_c#145219",
+    "facepunch.yellow_weed_flower#424044"
+  ],
+  "__version": 0
+}

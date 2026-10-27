@@ -1,0 +1,82 @@
+{
+  "Entries": [
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "8947afeb-9ed7-4804-800e-8cd651318113",
+        "Path": "flatpack/clutter/tree_oak_big_a_flatpack.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_oak_big_a_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "fc09f4c2-e3e3-405a-ad73-47ed1911caf3",
+        "Path": "flatpack/clutter/tree_oak_big_b_flatpack.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_oak_big_b_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "e368fecc-5180-418f-90e2-095c31dc5c00",
+        "Path": "flatpack/clutter/tree_oak_medium_a_flatpack.vmdl"
+      },
+      "Weight": 3,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_oak_medium_a_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "c4916dea-d330-466e-ad2f-734dd2fcdbdf",
+        "Path": "flatpack/clutter/tree_oak_dry_big_a_flatpack.vmdl"
+      },
+      "Weight": 1.8,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_oak_dry_big_a_flatpack.vmdl"
+    },
+    {
+      "Prefab": null,
+      "Model": {
+        "Id": "a8c85527-eb7b-4776-b13d-1adb69491dd3",
+        "Path": "flatpack/clutter/tree_oak_dry_medium_a_flatpack.vmdl"
+      },
+      "Weight": 2.2,
+      "LocalScale": 1,
+      "CastShadows": true,
+      "EnablePhysics": false,
+      "HasAsset": true,
+      "AssetName": "flatpack/clutter/tree_oak_dry_medium_a_flatpack.vmdl"
+    }
+  ],
+  "IsEmpty": false,
+  "TileSizeEnum": "Size2048",
+  "TileRadius": 4,
+  "Scatterer": {
+    "Type": "SimpleScatterer",
+    "Scale": "0.449999988 0.800000012",
+    "Density": 0.05,
+    "PlaceOnGround": true,
+    "HeightOffset": -6,
+    "AlignToNormal": false
+  },
+  "__references": [],
+  "__version": 0
+}

@@ -1,0 +1,43 @@
+{
+  "Maps": {
+    "$blob": "5fdbef84-c753-8c20-92ab-ab359e0cd992"
+  },
+  "Resolution": 1024,
+  "TerrainSize": 49152,
+  "TerrainHeight": 6000,
+  "Materials": [
+    {
+      "Id": "466f575e-67a2-40c0-83ae-fcb2d6db2d65",
+      "Path": "materials/terrain/terrain_grass_b.tmat"
+    },
+    {
+      "Id": "6f9a717b-3e7e-41a2-a61e-a2b8fec6487b",
+      "Path": "materials/terrain/terrain_dirt_b.tmat"
+    },
+    {
+      "Id": "d300aa9d-68e9-4f55-909e-3c2ecc22cd0c",
+      "Path": "materials/terrain/terrain_leaves.tmat"
+    }
+  ],
+  "MaterialSettings": {
+    "HeightBlendEnabled": true,
+    "HeightBlendSharpness": 0.87,
+    "Sampler": {
+      "Filter": "Anisotropic",
+      "AddressModeU": "Wrap",
+      "AddressModeV": "Wrap",
+      "AddressModeW": "Wrap",
+      "MipLodBias": 0,
+      "MaxAnisotropy": 8,
+      "BorderColor": "0,0,0,0",
+      "Index": 3
+    }
+  },
+  "ResourceVersion": 3,
+  "__references": [
+    "facepunch.terrain_dirt_b#309944",
+    "facepunch.terrain_grass_b#310240",
+    "facepunch.terrain_leaves#310247"
+  ],
+  "__version": 3
+}
